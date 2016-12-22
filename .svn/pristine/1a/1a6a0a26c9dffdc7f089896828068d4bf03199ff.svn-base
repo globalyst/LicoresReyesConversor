@@ -1,0 +1,272 @@
+package licoresreyes.model;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+public class OdooObject extends LRObject {
+
+	private final String DEFAULT_VALUE = "";
+	
+	public OdooObject(String filename, OpenBravoObject OB,List<OpenBravoObject> relOB) {
+		this.filename = filename;
+		headerList = new ArrayList<String>();
+		data  = new ArrayList<List<String>>(); 
+		
+		init(OB,relOB);
+
+	}
+	
+	private void init(OpenBravoObject OB,List<OpenBravoObject> relOB) {
+		List<XmlField> xmlFields = OB.getXmlTable().getFields();
+		int percent = 0;
+		Logger.log("\n####### OD-OBJECT --> " +  filename +  " #######");
+		
+		Logger.log(" Iniciando TABLA "  + OB.getXmlTable().getId() + "; rows : " + OB.data.size() ) ;
+		for (int i = 0; i < xmlFields.size(); i++) {
+			String OBColumn = xmlFields.get(i).getOBColumn();
+			String ODColumn = xmlFields.get(i).getODColumn();
+			String prefix = xmlFields.get(i).getPrefix();
+			String value = xmlFields.get(i).getDefaultvalue();
+			
+			addColumn(ODColumn);
+			
+			if (value.isEmpty()) {
+				int OBColumnIndex = OB.getColumnIndex(OBColumn);
+				if (OBColumnIndex >= 0) {
+					for (int j= 0; j < OB.getRowCount(); j++) {
+						value = OB.getData(j,OBColumnIndex);
+						this.setData(i,j,value);
+					}
+				} else {
+					Logger.error("No se ha podido encontrar la columna " + OBColumn + " en " + OB.getXmlTable().getId());
+				}
+			} else {
+				for (int j= 0; j < OB.getRowCount(); j++) {
+					this.setData(i,j,value);
+				}
+			}
+			
+			if (  (i * 100 / xmlFields.size() ) > percent  ) {
+				percent = i * 100 / xmlFields.size();
+				System.out.print(".");
+			}
+			
+		}
+
+		addData2(relOB);
+		addPrefix(OB,relOB);	
+	}
+	
+	public void addData(List<OpenBravoObject> relOB) {
+		//Recorremos las tablas con referencias a la principal
+		for (int i = 0; i < relOB.size(); i++) {
+			OpenBravoObject OB = relOB.get(i);
+			
+			for (int j = 0; j < OB.getXmlTable().getFields().size(); j++) {
+				String headOD = OB.getXmlTable().getFields().get(j).getODColumn();
+				addColumn(headOD);;
+			}
+			
+			
+			String rel = OB.getXmlTable().getRelation();
+			String from = OB.getXmlTable().getFrom();
+			
+			Logger.log("\n Cargando TABLA "  + OB.getXmlTable().getId() + " ; rel : " + rel  +  " ; from : " + from  + "; rows : " + OB.data.size() ) ;
+			//Recorremos las filas de la tabla a importar
+			
+			int percent = 0;
+			
+			for (int j = 0; j < OB.data.size(); j++) {
+				//Buscamos el id de la nueva tabla a encontrar
+				int rowOB = j;
+				int columnOB = OB.getColumnIndex(rel);
+
+				if (rowOB >= 0 && columnOB >= 0) {
+					String idOB = OB.getData(rowOB, columnOB) ;
+					//Buscamos la fila donde haya coincidencias con dicho id
+					
+					int columnOD = this.getColumnIndex(from);
+					int rowOD  = this.find(columnOD,idOB);
+					 
+					if (rowOD >= 0 && columnOD >= 0) {
+						//System.out.println("\nSe ha encontrado el valor " + idOB + " en la columna " + from + " ( " + columnOD + " , " + rowOD +  " ) con origen en " + rel  + " ( " + columnOB + ", " + rowOB + " ), tabla " + OB.getXmlTable().getId());
+						for (int k = 0; k < OB.getXmlTable().getFields().size(); k++ ) {
+							String headOB = OB.getXmlTable().getFields().get(k).getOBColumn();
+							String headOD = OB.getXmlTable().getFields().get(k).getODColumn();
+							String prefix = OB.getXmlTable().getFields().get(k).getPrefix();
+							columnOB = OB.getColumnIndex(headOB);
+							columnOD = getColumnIndex(headOD);
+						
+							if (columnOB >= 0) {
+								String fromOB = OB.data.get(rowOB).get(columnOB);
+								//System.out.println("\nSe ha encontrado el valor " + idOB + " en la columna " + from + " ( " + columnOD + " , " + rowOD +  " ) con origen en " + rel  + " ( " + columnOB + ", " + rowOB + " ), tabla " + OB.getXmlTable().getId() + " --> fromOB : " + fromOB);
+								System.out.println("columnOD:  " + columnOD + " ; rowOD :" +  rowOD + " ; fromOB: " + fromOB  );
+								this.setData(columnOD, rowOD, fromOB);
+							} else {
+								System.out.println("\nNo se ha enconrado el indice para  " + headOB);
+							}
+						}//end for fields
+					} else {
+					//	System.out.print("\nNo se ha encontrado el valor " + idOB + " en la columna " + from + " ( " + columnOD + " , " + rowOD +  " ) con origen en " + rel  + " ( " + columnOB + ", " + rowOB + " ), tabla " + OB.getXmlTable().getId());
+					}
+				}
+				if (  (j * 100 / OB.data.size() ) > percent  ) {
+					percent = j * 100 / OB.data.size();
+					System.out.print(".");
+					if (percent % 10 == 0)
+						System.out.print( "(" + percent + "%)");
+				}
+
+			}//end for rows
+		}//end for list
+
+	}
+	public void addData2(List<OpenBravoObject> relOB) {
+		//Recorremos las tablas con referencias a la principal
+		for (int i = 0; i < relOB.size(); i++) {
+			OpenBravoObject OB = relOB.get(i);
+			
+			for (int j = 0; j < OB.getXmlTable().getFields().size(); j++) {
+				String headOD = OB.getXmlTable().getFields().get(j).getODColumn();
+				addColumn(headOD);;
+			}
+			
+			
+			String rel = OB.getXmlTable().getRelation();
+			String from = OB.getXmlTable().getFrom();
+			
+			Logger.log("\n Cargando TABLA "  + OB.getXmlTable().getId() + " ; rel : " + rel  +  " ; from : " + from  + "; rows : " + OB.data.size() ) ;
+			//Recorremos las filas de la tabla a importar
+			
+			int percent = 0;
+			
+			for (int j = 0; j < data.size(); j++) {
+				//Buscamos el id de la nueva tabla a encontrar
+				int rowOD = j;
+				int columnOD = this.getColumnIndex(from);
+				
+				if (columnOD >= 0) {
+					String idOD = this.getData(rowOD, columnOD) ;
+					
+
+					for (int k = 0; k < OB.getXmlTable().getFields().size(); k++ ) {
+						String headOB = OB.getXmlTable().getFields().get(k).getOBColumn();
+						String headOD = OB.getXmlTable().getFields().get(k).getODColumn();
+						String prefix = OB.getXmlTable().getFields().get(k).getPrefix();
+						
+						int columnOB = OB.getColumnIndex(rel);
+					
+						int rowOB  = OB.findLiteral(columnOB,idOD);
+
+						if (columnOB >= 0 && rowOB >= 0) {
+							columnOB  = OB.getColumnIndex(headOB);
+							columnOD = getColumnIndex(headOD);
+							String fromOB = OB.data.get(rowOB).get(columnOB);
+							
+							this.setData(columnOD, rowOD, fromOB);
+						}
+					}
+					
+				}
+			}
+		}
+	}	
+			
+	public void addPrefix(OpenBravoObject OB,List<OpenBravoObject> relOB) {
+		System.out.println("\n Añadiendo  prefijos");
+		
+		List<XmlField> xmlFields = OB.getXmlTable().getFields();
+		int percent = 0;
+		for (int j = 0; j < xmlFields.size(); j++) {
+			String prefix = xmlFields.get(j).getPrefix();
+			if (!prefix.isEmpty()) {
+				String columnName = xmlFields.get(j).getODColumn();
+				int columnIndex = this.getColumnIndex(columnName);
+				for (int k= 0; k < data.size(); k++) {
+					String oldData = this.getData(k, columnIndex);
+					this.setData(columnIndex, k, prefix.replace(".", "") + oldData);
+				}
+			}
+		}
+		
+		for (int i = 0; i < relOB.size(); i++) { 
+			xmlFields = relOB.get(i).getXmlTable().getFields();
+			
+			
+			for (int j = 0; j < xmlFields.size(); j++) {
+				String prefix = xmlFields.get(j).getPrefix();
+				
+				if (!prefix.isEmpty()) {
+					
+					String columnName = xmlFields.get(j).getODColumn();
+					int columnIndex = this.getColumnIndex(columnName);
+					
+					for (int k= 0; k < data.size(); k++) {
+						String oldData = this.getData(k, columnIndex);
+						this.setData(columnIndex, k, prefix + oldData);
+					}
+					if (  (j * 100 / OB.data.size() ) > percent  ) {
+						percent = j * 100 / OB.data.size();
+						System.out.print(".");
+						if (percent % 10 == 0)
+							System.out.print( "(" + percent + "%)");
+					}
+				}
+			}
+		}
+		
+	
+	}
+	public void addColumn(String columnName) {
+		headerList.add(columnName);
+		for (int i= 0; i < data.size(); i++) {
+			data.get(i).add(DEFAULT_VALUE);
+		}
+	}
+	
+	public void ApplyFilter(XmlFilter xmlFilter) {
+
+		Logger.log("\nAplicando Filtro : " + xmlFilter.getType() + " ; column : " + xmlFilter.getColumn() + " ; value : " + xmlFilter.getValue() + " ; by : " +  xmlFilter.getBy());
+		int columnIndex = getColumnIndex(xmlFilter.getColumn());
+		
+		int percent = 0;
+		int j = 0;
+		for (Iterator<List<String>> iterator = data.iterator(); iterator.hasNext();) {
+		    List<String> row = iterator.next();
+		    String rowValue = row.get(columnIndex);
+		    	
+		    switch(xmlFilter.getType()) {
+			case FILTER:	
+				if (!rowValue.equals(xmlFilter.getValue())) {
+					iterator.remove();
+				}
+				break;
+			case FILTER_EX:	
+				if (rowValue.equals(xmlFilter.getValue())) {
+					iterator.remove();
+				}
+				break;
+			case REMOVE:
+				if (rowValue.equals(xmlFilter.getValue())) {
+					row.set(columnIndex, "");
+				}
+				break;
+			case REPLACE:
+				if (rowValue.equals(xmlFilter.getValue())) {
+					row.set(columnIndex, xmlFilter.getBy());
+				}
+				break;
+			}
+		    /*
+			if (  (j * 100 / data.size() ) > percent  ) {
+				percent = j * 100 / data.size();
+				System.out.print(".");
+				if (percent % 10 == 0)
+					System.out.print( "(" + percent + "%)");
+			}
+			j++;
+			*/
+		}
+	}
+}

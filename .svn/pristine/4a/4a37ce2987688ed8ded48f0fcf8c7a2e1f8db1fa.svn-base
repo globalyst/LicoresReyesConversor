@@ -1,0 +1,210 @@
+package licoresreyes.view;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+
+import licoresreyes.controller.LRController;
+import licoresreyes.model.Logger;
+
+
+public class PanelView  extends JPanel{
+	private static final long serialVersionUID = 1L;
+	private static JTextArea txtLog = new JTextArea();
+	private static StringBuilder logBuilder = new StringBuilder();
+	
+	LRController lrController = new LRController(); 
+	List<JCheckBox> boxes = new ArrayList<JCheckBox>();
+	
+	public PanelView() {
+		_init();
+	}
+	
+	public void _init() {
+		
+		 this.setLayout (new BorderLayout());
+		 Font fontTitle = new Font("Monospaced", Font.BOLD, 14);
+		 loadObjectPanel(BorderLayout.WEST,fontTitle);
+		 loadLogPanel(BorderLayout.CENTER,fontTitle);
+		 loadButtonPanel(BorderLayout.NORTH);
+	}
+	
+	public void loadLogPanel(String align,Font fontTitle) {
+		 // RIGHT PANEL 
+		 JPanel rightPanel = new JPanel();
+	     
+	     rightPanel.setBackground(new Color(0.0f,0.0f,0.0f));
+	     rightPanel.setLayout(new BoxLayout(rightPanel,BoxLayout.Y_AXIS));
+	      
+		 // TITLE
+	     //JPanel rightTitlePanel = new JPanel();
+	     JLabel rightTitle = new JLabel(" LOG ", JLabel.CENTER);
+	     rightTitle.setForeground(new Color(1.0f,1.0f,1.0f));
+	     rightTitle.setFont(fontTitle);
+
+	     
+	    // rightTitlePanel.add(rightTitle);
+	     rightPanel.add(rightTitle);
+	     
+		 // LOG TEXT AREA
+	     
+	     txtLog.setEditable(false);
+	     JScrollPane logScrollPanel = new JScrollPane(txtLog);
+	     logScrollPanel.setVerticalScrollBarPolicy( JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+	     
+
+	     rightPanel.add(logScrollPanel);
+	     
+	     // AÑADIMOS EL PANEL DERECHO AL CONTENEDOR PRINCIPAL
+		 add(rightPanel,align);
+	}
+	public void loadButtonPanel(String align) {
+		 JPanel bottomPanel = new JPanel();
+		 JButton buttonClearLog = new JButton("Limpiar Log");
+		 buttonClearLog.addActionListener(new ActionListener() {
+		     public void actionPerformed(ActionEvent e) {
+		    	 clearLog();
+		     }
+		 });
+
+		 bottomPanel.add(buttonClearLog);
+		     
+	     JButton buttonLoad= new JButton("Iniciar Carga");
+	     buttonLoad.addActionListener(new ActionListener()
+	     {
+	         public void actionPerformed(ActionEvent e)
+	         {	
+	        	
+	        	 int resp=JOptionPane.showConfirmDialog(null,"Se va a comenzar la carga para los objetos:\n" + getSelectedItems());
+	             if (JOptionPane.OK_OPTION == resp){
+	            	 loadData();
+	             } else {
+	            	 Logger.log("Se ha cancelado la carga.");
+	             }
+	         }
+	       });
+
+	     bottomPanel.add(buttonLoad);
+	     
+		 add(bottomPanel,align);
+	}
+	
+	public void loadObjectPanel(String align,Font fontTitle) {
+		
+
+		 // LEFT PANEL 
+		 JPanel leftPanel = new JPanel();
+	     leftPanel.setLayout(new BoxLayout(leftPanel,BoxLayout.Y_AXIS));
+	     
+	     // TITLE
+		 JLabel leftTitle = new JLabel(" ---- SELECCIONAR LOS OBJETOS ODOO A IMPORTAR ---- ", JLabel.CENTER);
+		 leftTitle.setFont(fontTitle);
+		
+		 
+		 leftPanel.add(leftTitle);
+	
+	    
+	     
+	     System.out.println(lrController);
+	     for (int i = 0; i < lrController.getXmlLoader().getObjectCount();i++) {
+	    	
+	    	 String ODTag = lrController.getXmlLoader().getObjectList().get(i).getId();
+	    	
+	    	 JCheckBox check = new JCheckBox(ODTag);
+	    	 JPanel ODPanel = new JPanel();
+	    	 ODPanel.setLayout(new BoxLayout (ODPanel,BoxLayout.Y_AXIS));
+	    	 String OBTag = "    " + lrController.getXmlLoader().getObjectList().get(i).getMainTable().getId();
+	    	 JLabel OBLabel = new JLabel(OBTag,JLabel.RIGHT);
+	    	 ODPanel.add(OBLabel);
+	    	 
+	    	 for (int j = 0; j < lrController.getXmlLoader().getObjectList().get(i).getReferenceTableList().size(); j++) {
+	    		 OBTag = "    " + lrController.getXmlLoader().getObjectList().get(i).getReferenceTableList().get(j).getId();
+	    		 JLabel OBLabelRef = new JLabel(OBTag,JLabel.RIGHT);
+	    		 ODPanel.add(OBLabelRef);
+	    	 }
+	    	 
+	    	 leftPanel.add(check);
+	    	 boxes.add(check);
+	    	 leftPanel.add(ODPanel);
+	     }
+	     
+	     add(leftPanel,align);
+		 
+	}
+
+	public void loadData() {
+		lrController.loadData(this);
+	}
+	
+	public boolean isSelected(String toFind) {
+		boolean result = false;
+		for (int i = 0; i < boxes.size(); i++) {
+			if (boxes.get(i).getText().equals(toFind)) {
+				result = boxes.get(i).isSelected();
+			}
+		}
+		return result;
+	}
+	
+	public String getSelectedItems() {
+		StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < boxes.size(); i++) {
+			if (boxes.get(i).isSelected())
+				builder.append(boxes.get(i).getText() + "\n");
+		}
+		if (builder.length() == 0) {
+			builder.append(" NO SE HAN SELECCIONADO OBJETOS \n");
+		}
+		return builder.toString();
+	}
+	public static void writeOnLog(String logText) {
+        java.util.Date date= new java.util.Date();
+        SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
+        String timeStamp = df.format(date.getTime());
+        
+        logBuilder.append(timeStamp + " --> " +  logText   + "\n");
+        txtLog.setText(logBuilder.toString());
+	
+	}
+	
+	public static void clearLog() {
+		 logBuilder.delete(0,logBuilder.length());
+		 txtLog.setText(logBuilder.toString());
+	}
+	
+    
+    
+    public static void createAndShowGUI() {
+    	 
+        //Create and set up the window.
+        JFrame frame = new JFrame("LRConversor");
+        frame.setTitle("LR Conversor");
+        frame.setSize(1280, 720);
+        frame.setLocationRelativeTo(null);      
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+ 
+        //Create and set up the content pane.
+        PanelView panelView = new PanelView();
+        panelView.setOpaque(true); //content panes must be opaque
+        frame.setContentPane(panelView);
+ 
+        //Display the window.
+       // frame.pack();
+        frame.setVisible(true);
+    }
+}

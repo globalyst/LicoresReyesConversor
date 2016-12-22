@@ -1,0 +1,318 @@
+package licoresreyes.controller;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import licoresreyes.model.OdooObject;
+import licoresreyes.model.OpenBravoObject;
+import licoresreyes.model.XmlFilter;
+import licoresreyes.model.XmlLoader;
+import licoresreyes.model.XmlObject;
+import licoresreyes.model.XmlTable;
+import licoresreyes.view.PanelView;
+
+public class LRController {
+
+	private XmlLoader xmlLoader = null;
+	
+	public LRController() {
+		loadXmlConfig();
+	}
+	
+	public XmlLoader getXmlLoader(){
+		return xmlLoader;
+	}
+	
+	public void loadXmlConfig() {
+		xmlLoader = new XmlLoader();
+    	xmlLoader.loadObjects();
+	}
+	
+	public void loadODObject(XmlObject xmlObject) {
+		XmlTable xmlTable = xmlObject.getMainTable();
+		String filename = xmlTable.getId();
+		OpenBravoObject mainOB = OpenBravoObject.GetInstance(filename,xmlTable);
+
+		List<OpenBravoObject> relOB = new ArrayList<OpenBravoObject>();
+		
+		
+		for(int j = 0; j < xmlObject.getReferenceTableList().size(); j++) {
+			xmlTable = xmlObject.getReferenceTableList().get(j);
+			filename = xmlTable.getId();
+			OpenBravoObject OB = OpenBravoObject.GetInstance(filename,xmlTable);
+
+			relOB.add(OB);
+		}
+		
+		//FUSIONAR OBJETOS OB
+		
+		relOB = fuseOBObjects(relOB);
+		
+		if (isHasExportOb()) {
+			mainOB.SaveFile();
+			for (int i = 0; i < relOB.size(); i++) {
+				relOB.get(i).SaveFile();
+			}
+		}
+		
+		OdooObject OD = new OdooObject(xmlObject.getId(), mainOB, relOB );
+		
+		for(int i = 0; i < xmlObject.getFilterList().size(); i++) {
+			OD.ApplyFilter(xmlObject.getFilterList().get(i));
+		}
+		
+		OD.SaveFile();
+	}
+	
+	
+	public OdooObject _loadODObject(XmlObject xmlObject) {
+		XmlTable xmlTable = xmlObject.getMainTable();
+		String filename = xmlTable.getId();
+		OpenBravoObject mainOB = OpenBravoObject.GetInstance(filename,xmlTable);
+
+		List<OpenBravoObject> relOB = new ArrayList<OpenBravoObject>();
+		
+		
+		for(int j = 0; j < xmlObject.getReferenceTableList().size(); j++) {
+			xmlTable = xmlObject.getReferenceTableList().get(j);
+			filename = xmlTable.getId();
+			OpenBravoObject OB = OpenBravoObject.GetInstance(filename,xmlTable);
+
+			relOB.add(OB);
+		}
+		
+		//FUSIONAR OBJETOS OB
+		
+		relOB = fuseOBObjects(relOB);
+		
+		OdooObject OD = new OdooObject(xmlObject.getId(), mainOB, relOB );
+		
+		for(int i = 0; i < xmlObject.getFilterList().size(); i++) {
+			OD.ApplyFilter(xmlObject.getFilterList().get(i));
+		}
+		
+		return OD;
+	}
+	public List<OpenBravoObject> fuseOBObjects(List<OpenBravoObject> relOB) {
+		List<OpenBravoObject> result = relOB;
+		List<OpenBravoObject> toRemove = new ArrayList<OpenBravoObject>();
+		
+		boolean isFuse = false;
+		for(int i = 0; i < relOB.size(); i++) {
+			String fuse = relOB.get(i).getXmlTable().getFuse();
+			if (!fuse.isEmpty() ) {
+				OpenBravoObject toFuse = null;
+				for (int j = 0; j < relOB.size() ; j++ ) {
+					if (relOB.get(j).getXmlTable().getId().equals(fuse)) {
+						toFuse = relOB.get(j);
+						toRemove.add(toFuse);
+						isFuse = true;
+						break;
+					}
+				}
+				if (toFuse != null) {
+					relOB.get(i).fuse(toFuse);
+				}
+			}
+		}
+		if (isFuse) {
+			for (Iterator<OpenBravoObject> iterator = relOB.iterator(); iterator.hasNext();) {
+				OpenBravoObject row = iterator.next();
+			 
+				for(int i = 0; i < toRemove.size(); i++) {
+					if (row.filename == toRemove.get(i).filename) {
+					    iterator.remove();
+				    }
+				}
+			}
+		}
+		return result;
+		
+	}
+	
+	private static boolean hasToGenerateIds = false;
+	private static boolean hasOnlyActive = false;
+	private static boolean hasExportOb = false;
+	
+	public static boolean isHasToGenerateIds() {
+		return hasToGenerateIds;
+	}
+
+	public static void setHasToGenerateIds(boolean hasToGenerateIds) {
+		LRController.hasToGenerateIds = hasToGenerateIds;
+	}
+
+	public static boolean isHasOnlyActive() {
+		return hasOnlyActive;
+	}
+
+	public static void setHasOnlyActive(boolean hasOnlyActive) {
+		LRController.hasOnlyActive = hasOnlyActive;
+	}
+
+	
+	public static boolean isHasExportOb() {
+		return hasExportOb;
+	}
+
+	public static void setHasExportOb(boolean hasExportOb) {
+		LRController.hasExportOb = hasExportOb;
+	}
+
+	public void loadData(PanelView panelView) {
+		
+    	for (int i = 0; i < xmlLoader.getObjectCount(); i++) {
+    		if (panelView.isSelected(xmlLoader.getObjectList().get(i).getId())) {
+        		XmlObject xmlObject = xmlLoader.getObjectList().get(i);
+        		loadODObject(xmlObject);
+    		}
+
+    	}
+	}
+	
+	public void loadPriceList(PanelView panelView) {
+		
+		/* ARCHIVO CON TODOS LOS PRECIOS DE TODAS LAS VERSIONES DE TARIFA */
+		OdooObject ODlistaPrecios = null;
+    	for (int i = 0; i < xmlLoader.getObjectCount(); i++) {
+    		XmlObject xmlObject = xmlLoader.getObjectList().get(i);
+    		if (xmlObject.getId().equals("0 - precios.tarifas")) {
+    			ODlistaPrecios =_loadODObject(xmlObject);
+    		}
+    	}
+    	
+		int ODlistaPrecios_columnIndexTarifaId = ODlistaPrecios.getColumnIndex("price_list_id/id");
+	    int ODlistaPrecios_columnIndexProduct = ODlistaPrecios.getColumnIndex("id");
+	    int ODlistaPrecios_columnIndexPrice = ODlistaPrecios.getColumnIndex("list_price");
+	    
+		/* ARCHIVO CON LOS PRECIOS FINALES DE LOS PRODUCTOS PARA LA TARIFA GENERAL,
+		 *  DEBEMOS PARTIRLO EN TROZOS, SEPARARLO POR TARIFAS, FILTRAR POR FECHA, Y RECOMPONER */
+	    
+		OdooObject ODTarifaGeneral = null;
+    	for (int i = 0; i < xmlLoader.getObjectCount(); i++) {
+    		XmlObject xmlObject = xmlLoader.getObjectList().get(i);
+    		if (xmlObject.getId().equals("11 - precios.tarifas.venta.TarifaGeneral")) {
+    			ODTarifaGeneral =_loadODObject(xmlObject);
+    		}
+    	}
+    	
+    	if (ODTarifaGeneral == null) {
+    		System.out.println("Tarifa general es NULLL");
+    	}
+		int ODTarifaGeneral_columnIndexProduct = ODTarifaGeneral.getColumnIndex("id");
+		int ODTarifaGeneral_columnIndexPrice = ODTarifaGeneral.getColumnIndex("list_price");
+		
+		
+    	/* ARCHIVO CON TODAS LAS TARIFAS, QUE USAREMOS PARA FRACTURAR EL FICHERO DE PRECIOS EN TROCITOS */
+		OdooObject ODTarifas = null;
+    	for (int i = 0; i < xmlLoader.getObjectCount(); i++) {
+    		XmlObject xmlObject = xmlLoader.getObjectList().get(i);
+    		if (xmlObject.getId().equals("9 - product.pricelist")) {
+    			ODTarifas =_loadODObject(xmlObject);
+        		
+    		}
+    	}
+    	int ODTarifas_columnIndexId = ODTarifas.getColumnIndex("id");
+    	int ODTarifas_columnIndexName = ODTarifas.getColumnIndex("name");
+    	
+    	
+    	
+    	
+    	/* LISTA CON LOS TROCITOS DE FICHERO */
+    	List<OdooObject> listODs = new ArrayList<OdooObject>();
+    	
+    	/* RECORREMOS LAS TARIFAS */
+    	 for (int i = 0; i < ODTarifas.getRowCount(); i++) {
+    		 
+    		 /* ID Y NOMBRE DE TARIFA, QUE USAREMOS PARA COMPARAR Y PARA NOMBRAR*/
+    		String idTarifa = ODTarifas.getData(i, ODTarifas_columnIndexId);
+    		String nameTarifa = ODTarifas.getData(i, ODTarifas_columnIndexName);
+    		
+    		 /* TROCITO DE FICHERO */
+    		OdooObject tarifaDeTal = new OdooObject("0 - " +  nameTarifa);
+    		System.out.println("Cargando tarifa " + "0 - " +  nameTarifa);
+    		
+    		/* AÑADIMOS CABECERAS A TARIFA DE TAL */
+    		for (int j = 0; j < ODlistaPrecios.getColumnCount(); j++) { 
+    			 tarifaDeTal.addColumn(ODlistaPrecios.headerList.get(j));
+    		}
+    		 
+    		 /* RECORREMOS LA LISTA DE PRECIOS, BUSCANDO LAS COINCIDENCIAS DE ID CON LA TARIFA */
+    		 for (int j = 0; j < ODlistaPrecios.getRowCount(); j++) {
+    			 String idToCompare =  ODlistaPrecios.getData(j, ODlistaPrecios_columnIndexTarifaId);
+    			//System.out.println(idTarifa + " == " +  idToCompare);
+    			 /* SI HAY COINCIDENCIA, COGEMOS LA FILA DE LA LISTA DE PRECIOS, Y LA AÑADIMOS AL TROCITO*/
+    			 if (idTarifa.equals(idToCompare)) {
+    				 List<String> row = ODlistaPrecios.data.get(j);
+    				 tarifaDeTal.data.add(row);
+    			 }
+    		 }
+    		
+    		/* ESTE FILTRO DEBERÍA  HACER QUE SÓLO NOS QUEDEMOS CON EL ÚLTIMO PRECIO*/
+    		XmlFilter  xmlFilter = new XmlFilter("ADVANCED","id","HIGH","valid_from","","");
+    		tarifaDeTal.ApplyFilter(xmlFilter);
+    		
+    		 /* UNA VEZ FILTRADO, VAMOS A COMPARAR EL PRECIO CON LA TARIFA GENERAL,
+    		  * PRIMERO VAMOS A NECESITAR AÑADIR UNA NUEVA COLUMNA PARA EL VALOR DE DESCUENTO */
+    		tarifaDeTal.addColumn("Descuento");
+    		int columnDiscountIndex = tarifaDeTal.getColumnIndex("Descuento");
+    		
+    		/* AHORA RECORREMOS LAS FILAS DEL TROCITO, PARA COMPARAR EL PRECIO CON LA TARIFA GENERAL*/
+    		for (int j = 0; j < tarifaDeTal.getRowCount(); j++) {
+    			 /* NECESITAMOS EL ID DEL PRODUCTO QUE DEBEMOS BUSCAR, Y EL PRECIO QUE TIENE */
+				 String product = tarifaDeTal.getData(j, ODlistaPrecios_columnIndexProduct);
+    			 String price  = tarifaDeTal.getData(j, ODlistaPrecios_columnIndexPrice);
+    			 
+				 /* VALUE LO USAREMOS PARA ALMACENAR LA DIFERENCIA PORCENTUAL DE PRECIOS */
+    			 String value = "0.00";
+    			 
+    			 /* BUSCAMOS ESTE PRODUCTO EN LA TARIFA GENERAL, ASI QUE LA RECORREMOS */
+    			 for (int z = 0; z < ODTarifaGeneral.getRowCount(); z++) {
+    				 /* NECESITAMOS EL ID DEL PRODUCTO A COMPARAR, Y EL PRECIO QUE TIENE */
+    				 String productToCompare =  ODTarifaGeneral.getData(z, ODTarifaGeneral_columnIndexProduct);
+    				 String priceTarifaGeneral = ODTarifaGeneral.getData(z, ODTarifaGeneral_columnIndexPrice);
+
+    				 
+        			 /*CUANDO ENCONTREMOS LA COINCIDENCIA, CALCULAREMOS LA DIFERENCIA DE PRECIOS CON DICHO MATCH */
+    				 if (product.equals(productToCompare)) {
+    					 float Tg = Float.parseFloat(priceTarifaGeneral);
+    					 float Tx = Float.parseFloat(price);
+    					 float floatValue = (Tg - Tx) * 100.0f /  Tx;
+    					 value = String.valueOf(floatValue);
+    				 }
+    				 
+    			 }
+    			 
+    			 tarifaDeTal.setData(columnDiscountIndex, j, value);
+
+    			 
+    		 }
+    		 /*AÑADIMOS EL TROCITO YA FILTRADO Y CON EL DESCUENTO CALCULADO */
+    		
+    		 tarifaDeTal.SaveFile();
+    		 listODs.add(tarifaDeTal);
+    	}
+    	 
+    	 /*VAMOS A JUNTAR TODOS LOS TROCITOS EN ESTE FICHERO */
+    	 OdooObject result = new OdooObject("0 - Descuentos");
+    	 
+    	 /*LE AÑADIMOS LAS COLUMNAS QUE TIENE UN TROCITO CUALQUIERA, USAMOS EL PRIMERO  */
+    	 for (int i = 0; i < listODs.get(0).getColumnCount(); i++) {
+    		 String header = listODs.get(0).headerList.get(i);
+    		 //System.out.println("Añadiendo cabecera : " + header);
+    		 result.addColumn(header);
+    	 }
+    	 
+    	 /*RECORREMOS LOS TROCITOS  */
+    	 for (int i = 0; i < listODs.size(); i++) {
+    		 /*RECORREMOS LAS FILAS DE LOS TROCITOS  */
+    		 for (int j = 0; j < listODs.get(i).getRowCount(); j++) {
+				 List<String> row = listODs.get(i).data.get(j);
+				 result.data.add(row);
+    		 }
+    	 }
+    	 /* GUARDAMOS EL FICHERO UNIFICADO*/
+    	 result.SaveFile();
+	}
+}

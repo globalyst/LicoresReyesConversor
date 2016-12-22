@@ -1,0 +1,62 @@
+package licoresreyes.util;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import sun.misc.UUDecoder;
+import sun.misc.UUEncoder;
+
+
+public class UUEncodingTest {
+
+    private static void codifica(String inFichero, String outFichero) throws FileNotFoundException, IOException {
+        try {
+            UUEncoder uuec = new UUEncoder(inFichero);
+            InputStream in = new FileInputStream(inFichero);
+            BufferedInputStream bufin = new BufferedInputStream(in);
+            OutputStream out = new FileOutputStream(outFichero);
+            BufferedOutputStream bufou = new BufferedOutputStream(out);
+            uuec.encodeBuffer(bufin, bufou);
+            bufin.close();
+            bufou.close();
+            in.close();
+            out.close();
+        } catch (IOException e) {
+            System.out.println(e.toString());
+        }
+    }
+
+    private static void decodifica(String inFichero, String outFichero) {
+        try {
+            UUDecoder uudc = new UUDecoder();
+            InputStream in = new FileInputStream(inFichero);
+            BufferedInputStream bufin = new BufferedInputStream(in);
+            OutputStream out = new FileOutputStream(outFichero);
+            BufferedOutputStream bufou = new BufferedOutputStream(out);
+            uudc.decodeBuffer(bufin, bufou);
+            bufin.close();
+            bufou.close();
+            in.close();
+            out.close();
+        } catch (IOException e) {
+            System.out.println(e.toString());
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            codifica("fichero a codificar", "fichero de salida");
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(UUEncodingTest.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(UUEncodingTest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+}

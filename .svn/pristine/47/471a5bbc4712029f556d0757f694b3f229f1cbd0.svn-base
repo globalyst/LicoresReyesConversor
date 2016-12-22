@@ -1,0 +1,54 @@
+package licoresreyes.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class XmlTable {
+
+	private String id = "";
+	private String relation = "";
+	private String from = "";
+	private String fuse = "";
+	private List<XmlField> fields;
+
+	public XmlTable(String id, String relation, String from,String fuse) {
+		this.id = id;
+		this.relation = relation;
+		this.from = from;
+		this.fuse = fuse;
+		fields = new ArrayList<XmlField>();
+	}
+	
+	public void addField(XmlField xmlField) {
+		fields.add(xmlField);
+	}
+	
+	public void print() {
+		Logger.log("    TABLE id: " + id + " ; rel : " + relation );
+		for (int i = 0;i < fields.size(); i++) {
+			fields.get(i).print();
+		}
+	}
+
+	public String getId() {
+		return id;
+	}
+	
+	public String getRelation() {
+		return relation;
+	}
+
+	public List<XmlField> getFields() {
+		return fields;
+	}
+
+	public String getFuse() {
+		return fuse;
+	}
+
+	public String getFrom() {
+		return from;
+	}
+	
+	
+}

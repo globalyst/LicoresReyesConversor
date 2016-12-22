@@ -1,0 +1,38 @@
+package licoresreyes.model;
+
+public class XmlField {
+
+	private String OBColumn;
+	private String ODColumn; 
+	private String prefix = "";	
+	private String defaultvalue = "";
+	
+	public XmlField(String OBColumn,String ODColumn, String prefix,String defaultvalue) {
+		this.OBColumn = OBColumn;
+		this.ODColumn = ODColumn;
+		this.prefix = prefix;
+		this.defaultvalue = defaultvalue;
+	}
+
+	public String getOBColumn() {
+		return OBColumn;
+	}
+
+	public String getODColumn() {
+		return ODColumn;
+	}
+	
+	public String getPrefix() {
+		return prefix;
+	}
+
+	public String getDefaultvalue() {
+		return defaultvalue;
+	}
+
+	public void print() {
+		Logger.log("      FIELD Prefix : " + prefix + " ; DEFAULT: " + defaultvalue);
+		Logger.log("      OB : " + OBColumn + " ; OD : " + ODColumn);
+		Logger.log("      OD : " + OBColumn + " ; OD : " + ODColumn);
+	}
+}

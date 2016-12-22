@@ -1,0 +1,30 @@
+package licoresreyes.model;
+
+import licoresreyes.view.PanelView;
+
+public class Logger {
+
+	private static Logger logger;
+	
+	public static Logger GetInstance() {
+		if (logger == null) {
+			logger = new Logger();
+		}
+		return logger;
+	}
+	
+	public static void log(String text) {
+		System.out.println("" + text);
+		PanelView.writeOnLog(text);
+	}
+	
+	public static void error(String text) {
+		System.out.println("\n  ERROR" +  text);
+		PanelView.writeOnLog("\n  ERROR" + text);
+	}
+	
+	public static void logDebug(String text) {
+		System.out.println("  --> " + text);
+		PanelView.writeOnLog("\n  DEBUG" + text);
+	}
+}

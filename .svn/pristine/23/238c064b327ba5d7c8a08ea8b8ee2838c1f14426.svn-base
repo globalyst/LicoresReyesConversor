@@ -1,0 +1,45 @@
+package licoresreyes.model;
+
+public class XmlFilter {
+
+	enum Type {FILTER,FILTER_EX, REMOVE, REPLACE}
+	
+	private Type type = Type.FILTER;
+	private String column = "";
+	private String value = "";
+	private String by ="";
+	
+	public XmlFilter(String type, String column, String value, String by) {
+		if (type.equals("FILTER_EX")) {
+				this.type = Type.FILTER_EX;
+		}  else if (type.equals("REMOVE")) {
+			this.type = Type.REMOVE;
+		} else if (type.equals("REPLACE")) {
+			this.type = Type.REPLACE;
+		}
+		
+		this.column = column;
+		this.value = value;
+		this.by = by;
+	}
+
+	public Type getType() {
+		return type;
+	}
+
+	public String getColumn() {
+		return column;
+	}
+
+	public String getValue() {
+		return value;
+	}
+
+	public String getBy() {
+		return by;
+	}
+	
+	
+	
+	
+}

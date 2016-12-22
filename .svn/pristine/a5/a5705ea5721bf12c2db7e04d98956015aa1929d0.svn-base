@@ -1,0 +1,232 @@
+package licoresreyes.model;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+public class OpenBravoObject extends LRObject {
+
+	private static final int READ_MODE_NORMAL = 0;
+	private static final int READ_MODE_HEAD = 1;
+	private static final int READ_MODE_WAITING = 2;
+	private static final int READ_MODE_FIELD = 3;
+	private static final String ESPECIAL_CHARS = "áàäéèëíìïóòöúùuñÁÀÄÉÈËÍÌÏÓÒÖÚÙÜÑçÇ";
+	
+	private XmlTable xmlTable;
+	private OpenBravoObject(String filename, XmlTable xmlTable) {
+		this.filename = filename;
+		this.xmlTable  = xmlTable;
+	}
+	
+	public static  OpenBravoObject GetInstance(String filename, XmlTable xmlTable) {
+		 
+		int readMode = READ_MODE_NORMAL;
+		boolean hasHeader = false;
+		OpenBravoObject openBravoObject = new OpenBravoObject(filename,xmlTable); 
+		Logger.log("\n####### OB-OBJECT --> " +  filename +  " #######");
+		try {
+		
+			String sqlData = openBravoObject.LoadFile();
+			Logger.log(" Preparandose para leer " + sqlData.length() + " caracteres.");
+			StringBuilder tempWord = new StringBuilder("");
+	
+			List<String> headerList = new ArrayList<String>();
+			List<List<String>> data  = new ArrayList<List<String>>();;
+			
+			List<String> tempData  = new ArrayList<String>();
+			//int rowCounter = 0;
+			boolean isReadingValues = false;
+			boolean isReadingText = false;
+		
+			//Logger.log(sqlData);
+			for (int i = 0; i < sqlData.length(); i++) {
+					char c = sqlData.charAt(i);
+
+					switch (readMode) {
+					case READ_MODE_NORMAL:
+						//Buscar un (
+						if (c == '(') {
+							readMode = READ_MODE_HEAD;
+						}
+						break;
+					case READ_MODE_HEAD:
+							//Buscar una , y guardar la palabra
+							if (c == ')' ) {
+								readMode = READ_MODE_WAITING;
+	
+								if (!hasHeader) {
+									hasHeader = true;
+									headerList.add(tempWord.toString());
+									tempWord.delete(0, tempWord.length());
+								}
+								
+							} else if (!hasHeader) {
+								if (c == ',') {
+									//siguiente palabra
+									headerList.add(tempWord.toString());
+									tempWord.delete(0, tempWord.length());
+								
+								}	else {
+									//guardar char en palabra
+									tempWord.append(c);
+								}	
+							}
+						break;
+					case READ_MODE_WAITING:
+						if (c == '(' ) {
+							readMode = READ_MODE_FIELD;
+							tempData = new ArrayList<String>();
+						}
+						//Buscar un (
+						break;
+					case READ_MODE_FIELD:
+						//Buscar una , y guardar la palabra
+						// Si el caracter es una apertura de parentesis, significa que el paréntesis forma parte del texto
+						if (c == '('  && !isReadingText ) {
+							isReadingValues = true;
+							tempWord.append(c);
+						} else if (c == ';' ) {
+							tempWord.append(',');
+						} else if (c == '\n' ) {
+							if ( !isReadingText) 
+								tempWord.append(c);
+						} else  if (c == '\'' ) {
+							isReadingText = !isReadingText;
+						} else  if (c == ')'  && !isReadingText ) {
+							if (isReadingValues) {
+								tempWord.append(c);
+								isReadingValues = false;
+							} else {
+
+								tempData.add(tempWord.toString());
+								tempWord.delete(0, tempWord.length());
+								readMode = READ_MODE_NORMAL;
+								data.add(tempData);
+
+							}
+						//
+						} else if (c == ',' && !isReadingValues && !isReadingText ) {
+							tempData.add(tempWord.toString());
+							tempWord.delete(0, tempWord.length());
+						} else {
+							//guardar char en palabra
+							tempWord.append(c);
+						}
+						break;
+					}
+				} 
+			openBravoObject.headerList = headerList;
+			openBravoObject.data = data;
+			Logger.log("Se ha creado una instancia para " + filename +  " correctamente. El objeto tiene un total de  " + headerList.size() +  " columnas y " + data.size() +  " filas");
+			
+		} catch(Exception e) {
+			String error  = "Se ha producido un error al obtener una instancia de LRObject " + filename +  " --> " + e.getMessage();
+			Logger.log(error);
+		}
+		
+		//openBravoObject.removeInactiveRows();
+		return openBravoObject;
+	 }
+	
+	private String LoadFile () {
+
+		String filePath = path + filename + ".sql";
+		Logger.log(" Vamos a cargar el archivo   " + filePath);
+		StringBuilder result = new StringBuilder("");  
+		
+		//ClassLoader classLoader = getClass().getClassLoader();
+//		File file = new File(classLoader.getResource(filePath).getFile());
+
+		try {
+		FileInputStream fstream = new FileInputStream(filePath);
+        // Creamos el objeto de entrada
+        DataInputStream entrada = new DataInputStream(fstream);
+        // Creamos el Buffer de Lectura
+    	BufferedReader br = new BufferedReader(new InputStreamReader(entrada,"UTF-8"));
+		
+    		//try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+		    String line;
+		    while ((line = br.readLine()) != null) {
+		    	result.append(line).append("\n");
+		    }
+		    br.close();
+		    Logger.log(" Se ha cargado correctamente el archivo " + filePath);
+		} catch (Exception e) {
+			String error  = "Se ha producido un error al cargar el archivo sql " + filePath +  " --> " + e.getMessage();
+			Logger.error(error);
+			e.printStackTrace();
+		}
+			
+			
+			return result.toString();
+
+		  }
+
+	private static final String activeColumnName = "ISACTIVE";
+	
+	public void removeInactiveRows() {
+		int activeColumnIndex = getColumnIndex(activeColumnName);
+		for (Iterator<List<String>> iterator = data.iterator(); iterator.hasNext();) {
+		    List<String> row = iterator.next();
+		    String isActive = row.get(activeColumnIndex);
+		    
+		    if (isActive.equals(OB_BOOLEAN_FALSE)) {
+		        iterator.remove();
+		    }
+		}
+	}
+
+	public XmlTable getXmlTable() {
+		return xmlTable;
+	}
+ 
+	public void fuse(OpenBravoObject toFuse) {
+
+		String rel = toFuse.getXmlTable().getRelation();
+		
+		int columnIndex = getColumnIndex(rel);
+		int fuseColumnIndex = toFuse.getColumnIndex(rel);
+		
+		for (int i = 0; i < toFuse.getColumnCount(); i++) {
+			String column = toFuse.headerList.get(i);
+			if (!hasColumn(column)) {
+				addColumn(column);
+			}
+		}
+		
+		if (fuseColumnIndex >= 0) {
+			for (int i = 0; i < data.size(); i++) {
+				String idToFind = data.get(i).get(columnIndex);
+				int fuseRowIndex = toFuse.findLiteral(fuseColumnIndex, idToFind);
+
+				if (fuseRowIndex >= 0) {
+
+					for (int j = 0 ;j < toFuse.getColumnCount(); j++) {
+						 int columnIndexToWrite = getColumnIndex(toFuse.headerList.get(j));
+						 String from = toFuse.data.get(fuseRowIndex).get(j);
+						 String to = data.get(i).get(columnIndexToWrite);
+						 if (to.isEmpty())
+							 setData(columnIndexToWrite, i, from);
+					}
+					
+				}
+				
+				if (i % 500 == 0) {
+					System.out.println("FUSIONANDO " + (i * 100 / data.size() ) + "%");
+				}
+				
+				
+
+			}
+			this.getXmlTable().getFields().addAll(toFuse.getXmlTable().getFields());
+		}
+	}
+	
+}

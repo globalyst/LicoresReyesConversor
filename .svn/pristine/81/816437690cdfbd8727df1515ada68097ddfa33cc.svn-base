@@ -1,0 +1,67 @@
+package licoresreyes.model;
+
+public class XmlField {
+
+	private String OBColumn;
+	private String ODColumn; 
+	private String prefix = "";	
+	private String defaultvalue = "";
+	private String filter = "";
+	private String exportable = "";
+	private String rel = "";
+	
+	public XmlField(String OBColumn,String ODColumn, String prefix,String defaultvalue,String filter, String exportable,String rel) {
+		this.OBColumn = OBColumn;
+		this.ODColumn = ODColumn;
+		this.prefix = prefix;
+		this.defaultvalue = defaultvalue;
+		this.filter = filter;
+		this.exportable = exportable;
+		this.rel = rel;
+	}
+
+	public boolean isRel() {
+		return rel.equals("1");
+	}
+	public boolean isExportable() {
+		return exportable.equals("1");
+	}
+	public String getOBColumn() {
+		return OBColumn;
+	}
+
+	public String getODColumn() {
+		return ODColumn;
+	}
+	
+	public String getPrefix() {
+		return prefix;
+	}
+
+	public String getDefaultvalue() {
+		return defaultvalue;
+	}
+
+	
+	public String getFilter() {
+		return filter;
+	}
+
+	public void setFilter(String filter) {
+		this.filter = filter;
+	}
+
+	
+	public String getExportable() {
+		return exportable;
+	}
+
+	public void setExportable(String exportable) {
+		this.exportable = exportable;
+	}
+
+	public void print() {
+		System.out.println("      FIELD Prefix : " + prefix + " ; DEFAULT: " + defaultvalue);
+		System.out.println("      OB : " + OBColumn + " ; OD : " + ODColumn);
+	}
+}

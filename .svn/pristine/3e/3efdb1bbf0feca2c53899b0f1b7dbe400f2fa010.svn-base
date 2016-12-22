@@ -1,0 +1,463 @@
+package licoresreyes.xmlrpc;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.xmlrpc.XmlRpcException;
+import org.apache.xmlrpc.client.XmlRpcClient;
+import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
+
+import licoresreyes.model.OdooObject;
+import licoresreyes.model.XmlField;
+
+public class XmlRpc {
+	private final String TAG = "  RPC -->";
+	final String SERVER_URL = "http://reyes-pro.jaqueasesores.com:8069"  ;
+	final String SERVER_DB = "TEST-XMLRPC";
+	final String SERVER_USERNAME = "admin";
+	final String SERVER_PASSWORD = "pothe28len";
+	
+	public int  uid = -1;
+	public XmlRpc() {
+		uid = login();
+	}
+	
+	public Integer login() {
+		try {
+			
+			XmlRpcClient client = new XmlRpcClient();
+			XmlRpcClientConfigImpl config = new XmlRpcClientConfigImpl();
+			
+			config.setServerURL(new URL(SERVER_URL + "/xmlrpc/2/common"));
+			client.setConfig(config);
+			
+			Object[] params = new Object[] {SERVER_DB,SERVER_USERNAME,SERVER_PASSWORD};
+			
+			
+			Object uid = client.execute("login", params);
+			if (uid instanceof Integer)  {
+				System.out.println("XML-RPC LOGIN RESULT --> " + uid);
+				return (Integer) uid;
+			}
+
+			//Map<String, String> info = (Map<String, String>)client.execute(start_config, "start", emptyList);
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return -1;
+	}
+	
+	public Object[] testListRecord() {
+
+		String model = "res.company";
+		String action = "search"; 
+		 Object[] paramsMethod = new Object[]{ 
+				     new Object[] { 
+				         new Object[] {"is_company", "=", true}, 
+				         new Object[] {"customer", "=", true} 
+				         } 
+				     }; 
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+		paramsRules.put("offset",10); 
+		paramsRules.put("limit",5); 
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			Object[] tRLR = (Object[])rLR;
+		    return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	     return new Object[]{};
+	}
+	
+	public HashMap<Object,Object> testGetFields() {
+
+		
+		String model = "res.partner";
+		String action = "fields_get"; 
+		Object[] paramsMethod = new Object[]{ };
+
+		Object[] field_attributes = {"string", "help", "type"};
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+		paramsRules.put("attributes",field_attributes); 
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			HashMap<Object,Object> tRLR = (HashMap<Object,Object>)rLR;
+			System.out.println("testGetFields() RESULT: \n --> " + tRLR );
+			for (Map.Entry<Object, Object> entry : tRLR.entrySet())
+			{
+			    System.out.println(entry.getKey() + "/" + entry.getValue());
+			}
+
+		    return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	     return new HashMap<Object, Object>() ; 
+	}
+	
+	public  Object[] testSearch() {	
+
+		String model = "res.partner";
+		String action = "search_read"; 
+		Object[] fields = {"name", "country_id", "comment"};
+		Object[] paramsMethod = new Object[]{ 
+				     new Object[] { 
+				         new Object[] {"is_company", "=", true}, 
+				         new Object[] {"customer", "=", true} 
+				         } 
+				     }; 
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+		paramsRules.put("fields",fields); 
+		paramsRules.put("limit",10); 
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			
+			Object[] tRLR = (Object[] ) rLR;
+			
+			for (int i = 0 ; i < tRLR.length; i++) {
+				HashMap<Object,Object> auxRLR = (HashMap<Object,Object>)  tRLR[i];
+				for (Map.Entry<Object, Object> entry : auxRLR.entrySet())
+				{
+				    System.out.println(entry.getKey() + " : " + entry.getValue());
+				}
+			    System.out.println("");
+			}
+		    return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    return new Object[]{};
+		
+		
+	}
+
+	public int testCreate() {
+		
+		String model = "res.partner";
+		String action = "create"; 
+
+		HashMap<Object,Object> fieldList = new HashMap<Object, Object>() ; 
+		fieldList.put("name","00 - WOO PARTNER"); 
+		fieldList.put("phone","666666666"); 
+		Object[] paramsMethod = new Object[]{fieldList}; 
+		
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			
+			int tRLR = (Integer ) rLR;
+		    System.out.println("testCreate() --> Result :  " + tRLR);
+		    return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return -1;
+	}
+	
+	public int testCreateExternalId(int idCreated) {
+		
+		
+		String model = "ir.model.data";
+		String action = "create"; 
+		String external_id = "respartner" + idCreated;
+		HashMap<Object,Object> fieldList = new HashMap<Object, Object>() ; 
+		fieldList.put("name",external_id); 
+		fieldList.put("complete_name",external_id); 
+		fieldList.put("model","res.partner"); 
+		fieldList.put("res_id",idCreated); 
+		Object[] paramsMethod = new Object[]{fieldList}; 
+		
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			
+			int tRLR = (Integer ) rLR;
+		    return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return -1;
+	}
+	
+	public 	int createExternalId(int idCreated, String model) {
+		if (idCreated != -1) {
+			String action = "create"; 
+			String external_id = model.replace(".", "") + idCreated;
+			HashMap<Object,Object> fieldList = new HashMap<Object, Object>() ; 
+			fieldList.put("name",external_id); 
+			fieldList.put("complete_name",external_id); 
+			fieldList.put("model",model); 
+			fieldList.put("res_id",idCreated); 
+			
+			Object[] paramsMethod = new Object[]{fieldList}; 
+			
+			HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+	
+			try {
+				Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, "ir.model.data" , action,paramsMethod,paramsRules);
+				
+				int tRLR = (Integer ) rLR;
+			    return tRLR;
+			     
+			} catch (MalformedURLException | XmlRpcException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return -1;
+	}
+	
+	public int testGetIdFromExternalId() {
+		int result = -1;
+		int idCreated  = testCreate();
+		String external_id = "respartnerR" + idCreated;
+		System.out.println("Creado item con id " + idCreated);
+		testCreateExternalId(idCreated);
+		
+		
+		String model = "ir.model.data";
+		String action = "search_read"; 
+		Object[] fields = {"res_id"};
+		Object[] paramsMethod = new Object[]{ 
+				     new Object[] { 
+				         new Object[] {"name", "=", external_id} 
+				         } 
+				     }; 
+		
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+		paramsRules.put("fields",fields); 
+		try {
+
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+		
+			Object[] tRLR = (Object[] ) rLR;
+
+			if (tRLR.length == 1) {
+				HashMap<Object,Object> auxRLR = (HashMap<Object,Object>)  tRLR[0];
+				result = (Integer)auxRLR.get("res_id");
+			}	  
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.out.println("testGetExternalId() --> Result : " + result);
+	    return result;
+	}
+	public boolean testUpdate() {
+
+		String model = "res.partner";
+		String action = "write"; 
+
+		Object[] idList = {9111};
+		HashMap<Object,Object> fieldList = new HashMap<Object, Object>() ; 
+		fieldList.put("name","00 - WOO PARTNER UPDATED"); 
+		fieldList.put("phone","666666662"); 
+		Object[] paramsMethod = new Object[]{idList,fieldList}; 
+		
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			
+			boolean  tRLR = (boolean ) rLR;
+		    System.out.println("testUpdate() --> Result :  " + tRLR);
+		    return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return false;
+	}
+	
+	public void testDelete() {
+
+		String model = "res.partner";
+		String action = "unlink"; 
+
+		Object[] idList = {9111};
+
+		Object[] paramsMethod = new Object[]{idList}; 
+		
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			
+			boolean  tRLR = (boolean ) rLR;
+		    System.out.println("testDelete() --> Result :  " + tRLR);
+		   // return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+	}
+	
+	
+	public int create(String model, HashMap<Object,Object> fieldList ) {
+		String action = "create"; 
+		Object[] paramsMethod = new Object[]{fieldList}; 
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			
+			int tRLR = (Integer ) rLR;
+		    return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			e.printStackTrace();
+		}
+		return -1;
+	}
+	
+	public boolean update(String model, HashMap<Object,Object> fieldList, String id) {
+		String action = "write"; 
+
+		Object[] idList = {id};
+		Object[] paramsMethod = new Object[]{idList,fieldList}; 
+		
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+
+		try {
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+			
+			boolean  tRLR = (boolean ) rLR;
+		    System.out.println("testUpdate() --> Result :  " + tRLR);
+		    return tRLR;
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return false;
+		
+	}
+	public int  getIdFromExternalId(String external_id) {
+		int result = -1;
+		String model = "ir.model.data";
+		String action = "search_read"; 
+		Object[] fields = {"res_id"};
+		Object[] paramsMethod = new Object[]{ 
+				     new Object[] { 
+				         new Object[] {"name", "=", external_id} 
+				         } 
+				     }; 
+		
+		HashMap<Object,Object> paramsRules = new HashMap<Object, Object>() ; 
+		paramsRules.put("fields",fields); 
+		try {
+
+			Object rLR = listRecord(uid, SERVER_URL, SERVER_DB, SERVER_USERNAME, SERVER_PASSWORD, model , action,paramsMethod,paramsRules);
+		
+			Object[] tRLR = (Object[] ) rLR;
+
+			if (tRLR.length == 1) {
+				HashMap<Object,Object> auxRLR = (HashMap<Object,Object>)  tRLR[0];
+				result = (Integer)auxRLR.get("res_id");
+			}	  
+		     
+		} catch (MalformedURLException | XmlRpcException e) {
+			e.printStackTrace();
+		}
+	    return result;
+	}
+	
+	public void testInsertOD(OdooObject OD) {
+		System.out.println("\n" + TAG + "testInsertOD()");
+		for (int i = 0; i < OD.data.size(); i++) {
+			boolean isDebug = i < 3;
+			
+			HashMap<Object,Object> rowMap = new HashMap<Object,Object> ();
+			String id = "-1";
+			for (int j = 0; j < OD.data.get(i).size(); j++) {
+
+				XmlField xmlField = OD.getXmlFieldByNameColumn(OD.headerList.get(j));
+				//if (isDebug) System.out.println("testInsertOD() ODColumn : " + xmlField.getODColumn() + " ; OBColumn : "+  xmlField.getOBColumn()  + " ; Prefix : "+ xmlField.getPrefix());
+				if (xmlField != null) {
+					
+					if (xmlField.isRel()) {
+						// SI ES UN CAMPO NORMAL DE TEXTO, LO AÑADIMOS SIN MAS
+						if (xmlField.isExportable()) {
+							if (isDebug) System.out.println( TAG + "añadimos al map : " + OD.headerList.get(j) + " : " + OD.data.get(i).get(j) );
+							rowMap.put(OD.headerList.get(j), OD.data.get(i).get(j));
+							
+						}
+					} else {
+						String external_id = OD.data.get(i).get(j);
+						int idOd = getIdFromExternalId(external_id);
+						if (xmlField.getODColumn().equals("id")) {
+							// SI EL CAMPO ES EL ID, NO LO AÑADIMOS AL MAP, PERO LO GUARDAMOS PARA CREAR EL EXTERNAL ID SI ES NECESARIO
+							id = String.valueOf(idOd);
+						} else {
+							// SI EL CAMPO ESTÁ RELACIONADO, LO AÑADIMOS SOLO SI EXISTE ESE OBJETO RELACIONADO
+							if (idOd != -1) {
+								if (xmlField.isExportable()) {
+									if (isDebug) System.out.println( TAG + "añadimos rel al map : " + xmlField.getODColumn() + " : " + idOd );
+									rowMap.put(xmlField.getODColumn(), idOd);
+								}
+							}
+						}
+					}
+				} else {
+					System.out.println(TAG + "ERROR. XmlField es null");
+				}
+			}
+			if (isDebug) System.out.println(TAG + "id = " + id);
+			if (id.equals("-1")) {
+				if (isDebug) {
+					System.out.println(TAG + "CREATE, map size: " + rowMap.size());
+					System.out.println("MAP : " + rowMap.toString());		
+				}
+				
+				
+				//int newId = create(OD.xmlObject.getModel(),rowMap);
+				//createExternalId(newId,OD.xmlObject.getModel());
+			} else {
+				if (isDebug) System.out.println(TAG + "UPDATE, map size : " + rowMap.size());
+				//update(OD.xmlObject.getModel(),rowMap,id);
+			}
+		}
+	}
+	
+	
+	static Object listRecord(int uid, String url, String db, String username, String password, String resource, String action,
+			 Object[] paramsMethod,  HashMap<Object,Object> paramsRules	) throws MalformedURLException, XmlRpcException {
+			
+	     XmlRpcClient client = new XmlRpcClient(); 
+	     XmlRpcClientConfigImpl config = new XmlRpcClientConfigImpl(); 
+	     config.setEnabledForExtensions(true); 
+
+	     config.setServerURL(new URL(url+"/xmlrpc/2/object")); // OK 
+	     client.setConfig(config); 
+	   
+	     Object[] params = new Object[] {db, uid, password, resource, action, paramsMethod, paramsRules}; 
+	     Object result = client.execute("execute_kw", params); 
+	     return result; 
+	 }
+
+}

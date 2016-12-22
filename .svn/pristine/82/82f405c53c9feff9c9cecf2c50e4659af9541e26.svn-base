@@ -1,0 +1,65 @@
+package licoresreyes.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class XmlObject {
+
+	private String id;
+	private XmlTable mainTable = null;
+	private List<XmlTable> referenceTableList;
+	private List<XmlFilter> filterList;
+	
+	public XmlObject(String id) {
+		this.id = id;
+		referenceTableList = new ArrayList<XmlTable>();
+		filterList = new ArrayList<XmlFilter>();
+	}
+	
+	public void addTable(XmlTable xmlTable) {
+		if (mainTable != null) {
+			referenceTableList.add(xmlTable);
+		} else {
+			 mainTable = xmlTable ;
+		}
+	}
+	
+	public void addFilter(XmlFilter xmlFilter) {
+		filterList.add(xmlFilter);
+	}
+	
+	public void print() {
+		Logger.log("\n########################## XML CONFIG ###############################");
+		Logger.log("  OBJECT id: " + id);
+		mainTable.print();
+		for (int i = 0;i < referenceTableList.size(); i++) {
+			referenceTableList.get(i).print();
+		}
+		Logger.log("######################################################################\n");
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public int getTableCount() {
+		int result = 0;
+		if (mainTable != null) {
+			result = 1 + referenceTableList.size();
+		}
+		return result;
+	}
+	
+	public XmlTable getMainTable() {
+		return mainTable;
+	}
+
+	public List<XmlTable> getReferenceTableList() {
+		return referenceTableList;
+	}
+
+	public List<XmlFilter> getFilterList() {
+		return filterList;
+	}
+
+}

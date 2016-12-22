@@ -1,0 +1,138 @@
+package licoresreyes.controller;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import licoresreyes.model.OdooObject;
+import licoresreyes.model.OpenBravoObject;
+import licoresreyes.model.XmlLoader;
+import licoresreyes.model.XmlObject;
+import licoresreyes.model.XmlTable;
+import licoresreyes.view.PanelView;
+
+public class LRController {
+
+	private XmlLoader xmlLoader = null;
+	
+	/*
+	private static LRController _instance  = new LRController();
+	
+	public synchronized  static LRController GetInstance() {
+		if (_instance == null ) {
+			_instance  = new LRController();
+		}
+		return _instance;
+	}
+	*/
+	
+	public LRController() {
+		loadXmlConfig();
+	}
+	
+	public XmlLoader getXmlLoader(){
+		return xmlLoader;
+	}
+	
+	public void loadXmlConfig() {
+		xmlLoader = new XmlLoader();
+    	xmlLoader.loadObjects();
+	}
+	
+	public void loadODObject(XmlObject xmlObject) {
+		XmlTable xmlTable = xmlObject.getMainTable();
+		String filename = xmlTable.getId();
+		OpenBravoObject mainOB = OpenBravoObject.GetInstance(filename,xmlTable);
+		List<OpenBravoObject> relOB = new ArrayList<OpenBravoObject>();
+		
+		
+		for(int j = 0; j < xmlObject.getReferenceTableList().size(); j++) {
+			xmlTable = xmlObject.getReferenceTableList().get(j);
+			filename = xmlTable.getId();
+			OpenBravoObject OB = OpenBravoObject.GetInstance(filename,xmlTable);
+			if (LRController.hasOnlyActive) {
+				OB.removeInactiveRows();
+			}
+			relOB.add(OB);
+		}
+		
+		//FUSIONAR OBJETOS OB
+		
+		relOB = fuseOBObjects(relOB);
+		/*
+		for (int i = 0; i < relOB.size(); i++) {
+			relOB.get(i).SaveFile();
+		}
+		 */
+		OdooObject OD = new OdooObject(xmlObject.getId(), mainOB, relOB );
+		OD.SaveFile();
+	}
+	
+	public List<OpenBravoObject> fuseOBObjects(List<OpenBravoObject> relOB) {
+		List<OpenBravoObject> result = relOB;
+		List<OpenBravoObject> toRemove = new ArrayList<OpenBravoObject>();
+		
+		boolean isFuse = false;
+		for(int i = 0; i < relOB.size(); i++) {
+			String fuse = relOB.get(i).getXmlTable().getFuse();
+			if (!fuse.isEmpty() ) {
+				OpenBravoObject toFuse = null;
+				for (int j = 0; j < relOB.size() ; j++ ) {
+					if (relOB.get(j).getXmlTable().getId().equals(fuse)) {
+						toFuse = relOB.get(j);
+						toRemove.add(toFuse);
+						isFuse = true;
+						break;
+					}
+				}
+				if (toFuse != null) {
+					System.out.println("VAMOS A FUSIONAR: " + relOB.get(i).filename + " con " + toFuse.filename);
+					relOB.get(i).fuse(toFuse);
+				}
+			}
+		}
+		if (isFuse) {
+			for (Iterator<OpenBravoObject> iterator = relOB.iterator(); iterator.hasNext();) {
+				OpenBravoObject row = iterator.next();
+			 
+				for(int i = 0; i < toRemove.size(); i++) {
+					if (row.filename == toRemove.get(i).filename) {
+					    iterator.remove();
+				    }
+				}
+			}
+		}
+		return result;
+		
+	}
+	
+	private static boolean hasToGenerateIds = false;
+	private static boolean hasOnlyActive = false;
+	
+	public static boolean isHasToGenerateIds() {
+		return hasToGenerateIds;
+	}
+
+	public static void setHasToGenerateIds(boolean hasToGenerateIds) {
+		LRController.hasToGenerateIds = hasToGenerateIds;
+	}
+
+	public static boolean isHasOnlyActive() {
+		return hasOnlyActive;
+	}
+
+	public static void setHasOnlyActive(boolean hasOnlyActive) {
+		LRController.hasOnlyActive = hasOnlyActive;
+	}
+
+	public void loadData(PanelView panelView) {
+		
+    	for (int i = 0; i < xmlLoader.getObjectCount(); i++) {
+    		if (panelView.isSelected(xmlLoader.getObjectList().get(i).getId())) {
+        		XmlObject xmlObject = xmlLoader.getObjectList().get(i);
+        		loadODObject(xmlObject);
+    		}
+
+    	}
+	}
+}

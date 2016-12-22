@@ -1,0 +1,139 @@
+package licoresreyes.model;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.xml.parsers.DocumentBuilder;
+
+public class XmlLoader {
+	private static final String TAG = " XML --> ";
+	private List<XmlObject> objectList;
+	
+	public XmlLoader() {
+		objectList = new ArrayList<XmlObject>();
+	}
+	
+	public void addObject(XmlObject xmlObject) {
+		objectList.add(xmlObject);
+	}
+	
+	public void print() {
+		for (int i = 0;i < objectList.size(); i++) {
+			objectList.get(i).print();
+		}
+	}
+
+	public Document loadFile(String filename){
+		Document result = null;;
+		try {
+			//System.out.println(TAG + " Vamos a cargar CONFIG : " + filename);
+			File fXmlFile = new File(filename + ".xml");
+			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+			result = dBuilder.parse(fXmlFile);
+			result.getDocumentElement().normalize();
+
+	    } catch (Exception e) {
+	    	System.out.println(TAG + "Error al leer el archivo config.xml --> " + e.getMessage());
+	    	e.printStackTrace();
+	    }
+		return result;
+	  }
+	
+	public void loadObjects(String filename) {
+		
+		Document doc = loadFile(filename);
+    	
+    	NodeList objectList = doc.getElementsByTagName("OBJECT");	
+		
+		//Recorremos los elementos OBJECT
+		for (int i = 0; i < objectList.getLength(); i++) {
+			Node objectNode = objectList.item(i);
+			if (objectNode.getNodeType() == Node.ELEMENT_NODE) {
+				 Element eElement = (Element) objectNode;
+				 
+				 String objectId = eElement.getAttribute("id");
+				 String model = eElement.getAttribute("model");
+				 XmlObject xmlObject = new XmlObject(objectId,model);
+
+				 NodeList tables = eElement.getElementsByTagName("TABLE");
+				 for (int j = 0; j < tables.getLength(); j++ ) {
+					Node tableNode = tables.item(j);
+		
+					if (tableNode.getNodeType() == Node.ELEMENT_NODE) {
+						Element eElement2 = (Element) tableNode;
+
+						 String  tableId = eElement2.getAttribute("id");		
+						 String  tableRel = eElement2.getAttribute("rel");
+						 String  tableRelOD = eElement2.getAttribute("relOD");
+						 String  from = eElement2.getAttribute("from");
+						 String  fuseRel = eElement2.getAttribute("fus");	
+						 XmlTable xmlTable = new XmlTable(tableId,tableRel,tableRelOD,from,fuseRel);
+
+					 	 NodeList fields = eElement2.getElementsByTagName("FIELD");
+					 	 
+						//Recorremos los elementos FIELD
+						 for (int k = 0; k < fields.getLength(); k++ ) {
+							 Node fieldNode = fields.item(k);
+							 if (fieldNode.getNodeType() == Node.ELEMENT_NODE) {
+								 Element eElement3 = (Element) fieldNode;
+								 
+								 String prefix = eElement3.getAttribute("pref");	
+								 String defaultValue = eElement3.getAttribute("def");	
+								 String OBColumn = eElement3.getElementsByTagName("OB").item(0).getTextContent();
+								 String ODColumn = eElement3.getElementsByTagName("OD").item(0).getTextContent();
+								 String filter = eElement3.getAttribute("filter");	
+								 String exportable = eElement3.getAttribute("export");	
+								 String relational = eElement3.getAttribute("rel");	
+								 XmlField xmlField = new XmlField(OBColumn,ODColumn,prefix,defaultValue,filter,exportable,relational);
+								 xmlTable.addField(xmlField);
+							 }// END IF
+						 }// END for	FIELDS 
+						 xmlObject.addTable(xmlTable);
+					}// END IF	
+				 }// END for	TABLES
+				 
+				 NodeList filters = eElement.getElementsByTagName("FILTER");
+				 for (int j = 0; j < filters.getLength(); j++ ) {
+						Node filterNode = filters.item(j);
+						if (filterNode.getNodeType() == Node.ELEMENT_NODE) {
+							Element eElement2 = (Element) filterNode;
+							
+							 String  typeFilter = eElement2.getAttribute("type");		
+							 String  columnFilter = eElement2.getAttribute("column");
+							 String  valueFilter = eElement2.getAttribute("value");
+							 String  byFilter = eElement2.getAttribute("by");	
+							 String  set1 = eElement2.getAttribute("set1");	
+							 String  set2 = eElement2.getAttribute("set2");	
+							 XmlFilter xmlFilter = new XmlFilter(typeFilter,columnFilter,valueFilter,byFilter,set1,set2);
+							 xmlObject.addFilter(xmlFilter);
+						}
+				 }
+				 
+				 addObject(xmlObject);
+
+			}// END IF	
+			
+		}// END for	OBJECTS
+	
+		//print() ;
+	}
+
+	public int getObjectCount() {
+		return objectList.size();
+	}
+	
+	public List<XmlObject> getObjectList() {
+		return objectList;
+	}
+
+
+
+}

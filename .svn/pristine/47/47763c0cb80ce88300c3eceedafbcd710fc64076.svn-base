@@ -1,0 +1,117 @@
+package licoresreyes.model;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.xml.parsers.DocumentBuilder;
+
+public class XmlLoader {
+
+	private List<XmlObject> objectList;
+	
+	public XmlLoader() {
+		objectList = new ArrayList<XmlObject>();
+	}
+	
+	public void addObject(XmlObject xmlObject) {
+		objectList.add(xmlObject);
+	}
+	
+	public void print() {
+		for (int i = 0;i < objectList.size(); i++) {
+			objectList.get(i).print();
+		}
+	}
+
+	public Document loadFile(){
+		Document result = null;;
+		try {
+			Logger.log("Vamos a cargar el archivo config.xml");
+			File fXmlFile = new File("config.xml");
+			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+			result = dBuilder.parse(fXmlFile);
+			result.getDocumentElement().normalize();
+
+	    } catch (Exception e) {
+	    	Logger.error("Error al leer el archivo config.xml --> " + e.getMessage());
+	    	e.printStackTrace();
+	    }
+		return result;
+	  }
+	
+	public void loadObjects() {
+		
+		Document doc = loadFile();
+    	
+    	NodeList objectList = doc.getElementsByTagName("OBJECT");	
+		
+		//Recorremos los elementos OBJECT
+		for (int i = 0; i < objectList.getLength(); i++) {
+			Node objectNode = objectList.item(i);
+			if (objectNode.getNodeType() == Node.ELEMENT_NODE) {
+				 Element eElement = (Element) objectNode;
+				 
+				 String objectId = eElement.getAttribute("id");
+				 XmlObject xmlObject = new XmlObject(objectId);
+
+				 NodeList tables = eElement.getElementsByTagName("TABLE");
+
+				 //Recorremos los elementos OBJECTTABLE
+				 for (int j = 0; j < tables.getLength(); j++ ) {
+					Node tableNode = tables.item(j);
+		
+					if (tableNode.getNodeType() == Node.ELEMENT_NODE) {
+						 eElement = (Element) tableNode;
+
+						 String  tableId = eElement.getAttribute("id");		
+						 String  tableRel = eElement.getAttribute("rel");
+						 String  fuseRel = eElement.getAttribute("fus");	
+						 XmlTable xmlTable = new XmlTable(tableId,tableRel,fuseRel);
+
+					 	 NodeList fields = eElement.getElementsByTagName("FIELD");
+					 	 
+						//Recorremos los elementos FIELD
+						 for (int k = 0; k < fields.getLength(); k++ ) {
+							 Node fieldNode = fields.item(k);
+							 if (fieldNode.getNodeType() == Node.ELEMENT_NODE) {
+								 eElement = (Element) fieldNode;
+								 
+								 String prefix = eElement.getAttribute("pref");	
+								 String defaultValue = eElement.getAttribute("def");	
+								 String OBColumn = eElement.getElementsByTagName("OB").item(0).getTextContent();
+								 String ODColumn = eElement.getElementsByTagName("OD").item(0).getTextContent();
+								
+								 XmlField xmlField = new XmlField(OBColumn,ODColumn,prefix,defaultValue);
+								 xmlTable.addField(xmlField);
+							 }// END IF
+						 }// END for	FIELDS 
+						 xmlObject.addTable(xmlTable);
+					}// END IF	
+				 }// END for	TABLES
+				 addObject(xmlObject);
+			}// END IF	
+			
+		}// END for	OBJECTS
+		Logger.log("Cargado correctamente el archivo config.xml");
+		//print() ;
+	}
+
+
+	public int getObjectCount() {
+		return objectList.size();
+	}
+	public List<XmlObject> getObjectList() {
+		return objectList;
+	}
+
+
+
+}

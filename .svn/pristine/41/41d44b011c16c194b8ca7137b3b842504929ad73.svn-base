@@ -1,0 +1,309 @@
+package licoresreyes.model;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.List;
+
+import licoresreyes.controller.LRController;
+
+public class LRObject {
+
+	public List<String> headerList;
+	public List<List<String>> data;
+	
+	protected String pathInput = "input/";
+	protected String pathOutput = "output/";
+	public String filename = "";
+	
+	
+	public List<String> ToCSV() {
+		StringBuilder builder = new StringBuilder();
+		List<String> result = new ArrayList<String>();
+		try {
+			
+			for (int i = 0; i < headerList.size() ; i++) {
+				builder.append(headerList.get(i));
+				if (i < headerList.size() - 1) {
+					builder.append(';');
+				}
+			}
+			result.add(builder.toString());
+			builder = new StringBuilder(""); 
+			
+			builder.append("\n");
+			for (int i = 0; i < data.size() ; i++) {
+				long index = 0;
+				for (int j = 0; j < data.get(i).size() ; j++) {
+					builder.append(data.get(i).get(j)).append(';');
+				}
+				builder.append("\n");
+				if (index % 20000 == 0) { 
+					result.add(builder.toString());
+					builder = new StringBuilder("");
+				}
+				index++;
+				
+			}
+			System.out.println("Se ha convertido a CSV correctamente.");
+		} catch(Exception e) {
+			String error  = "Se ha producido un error al convertir a CSV --> " + e.getMessage();
+			System.out.println(error);
+		}
+		
+		return result;
+	}
+	
+	
+	public void SaveFile(String subpath) {
+		System.out.println("\nGenerando archivo " +  filename + ".csv");
+		 List<String> content = ToCSV();
+		
+		 try {
+			File file = new File(pathOutput + subpath +  filename + ".csv");
+
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+
+			BufferedWriter out = new BufferedWriter(new OutputStreamWriter(
+				new FileOutputStream(file), "UTF8"));
+
+			for (int i = 0; i < content.size(); i++) {
+				out.append(content.get(i));
+			}
+			
+			out.flush();
+			out.close();
+
+			System.out.println("Se ha guardado correctamente el archivo  " +  filename + ".csv");
+		} catch (IOException e) {
+			String error  = "Se ha producido un error al guardar el archivo csv " +  filename + ".csv" +  " --> " + e.getMessage();
+			System.out.println(error);
+			e.printStackTrace();
+		}
+		 
+	 }
+	
+	public int getColumnCount() {
+		return headerList.size();
+	}
+	
+	public int getRowCount() {
+		return data.size();
+	}
+	
+	public int getColumnIndex( String columnName ) {
+		int  result = -1;
+		for (int i = 0;  i < headerList.size(); i++) {
+			if (headerList.get(i).equals(columnName)) {
+				result = i;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	
+	public List<Integer> find(int columnIndex, String text) {
+		List<Integer> result = new ArrayList<Integer>();
+		
+		if (columnIndex >= 0) {
+			for (int i= 0; i< data.size(); i++) {
+
+				String toCompare = data.get(i).get(columnIndex);
+				//System.out.println("FIND LITERAL--> " + toCompare + " == " + text);
+				if (toCompare.equals(text)) {
+					result.add(i);
+				}
+			}
+		}
+		return result;
+	}
+	
+	public int find(String columnName, String text) {
+		int result = -1;
+		int index = getColumnIndex(columnName);
+		
+		if (index > 0) {
+			for (int i= 0; i< data.size(); i++) {
+				if (data.get(i).get(index).equals(text)) {
+					result = i;
+				}
+			}
+		}
+		return result;
+	}
+	
+	public final String OB_BOOLEAN_TRUE = "Y";
+	public final String OB_BOOLEAN_FALSE = "N";
+	public final String OD_BOOLEAN_TRUE = "1";
+	public final String OD_BOOLEAN_FALSE = "0";
+	
+	public boolean isBoolean(String value) {
+		return ( value.equals(OB_BOOLEAN_FALSE) || value.equals(OB_BOOLEAN_TRUE) );
+	}
+	
+	public boolean isNumber(String value) {
+
+		boolean result = false;
+		for (int i = 0; i < value.length() ; i++) {
+			char c = value.charAt(i);
+			boolean isDigit = (c >= '0' && c <= '9');
+			boolean isComa = ( c == ',');
+			boolean isPoint = ( c == '.');
+			boolean isNegative = (c == '-');
+			if ( isDigit || isComa || isPoint || isNegative) {
+				result = true;
+			} else {
+				result = false;
+				break;
+			}
+		}
+
+		return result ;
+	}
+	public final String OB_DATE_1 = "to_date(";
+	public final String OB_DATE_2 = ",DD/MM/RR)";
+	
+	public boolean isDate(String value) {
+		boolean result = value.contains(OB_DATE_1);
+		return result ;
+	}
+	
+	public String setDate(String value) {
+		String result = value;
+		result = result.replace(OB_DATE_1, "");
+		result = result.replace(OB_DATE_2, "");
+		
+		String[] parts = result.split("/");
+		String day = parts[0]; // DD
+		String month = parts[1]; // MM
+		String year  = parts[2]; // YY
+		int yearInteger = Integer.parseInt(year);
+		year = (yearInteger > 50) ? 19 + year : 20 + year ;
+		
+		result = year + "-" + month + "-" + day;
+		return result;
+	}
+
+	public boolean isHighDate(String first, String second) {
+		boolean result = false;
+		String[] partsFirst = first.split("/");
+		String[] partsSecond = second.split("/");
+		
+
+		int yearIntegerFirst = Integer.parseInt(partsFirst[0]); 
+		int yearIntegerSecond = Integer.parseInt(partsSecond[0]); 
+		
+		if (yearIntegerFirst > yearIntegerSecond) {
+			result = true;
+		} else if (yearIntegerFirst < yearIntegerSecond) {
+			result = false;
+		} else {
+			int monthIntegerFirst = Integer.parseInt(partsFirst[1]); 
+			int monthIntegerSecond = Integer.parseInt(partsSecond[1]); 
+			if (monthIntegerFirst > monthIntegerSecond) {
+				result = true;
+			} else if (monthIntegerFirst < monthIntegerSecond) {
+				result = false;
+			} else {
+				int dayIntegerFirst = Integer.parseInt(partsFirst[2]); 
+				int dayIntegerSecond = Integer.parseInt(partsSecond[2]); 
+				if (dayIntegerFirst > dayIntegerSecond) {
+					result = true;
+				} else if (dayIntegerFirst < dayIntegerSecond) {
+					result = false;
+				}
+			}
+		}
+		
+		/*if (result)
+		System.out.println("isHighDate --> First:  " + first + " ; second: " + second + " ; result : " + result);
+		*/
+		return result;	
+	}
+	
+	public String setBoolean(String value) {
+		String result = value;
+		if (value.equals(OB_BOOLEAN_TRUE)) {
+			result = OD_BOOLEAN_TRUE;
+		} else if (value.equals(OB_BOOLEAN_FALSE)) {
+			result = OD_BOOLEAN_FALSE;
+		}
+		return result;
+	}
+	
+	public String setNumber(String value) {
+		String result = value.replace(',', '.');
+
+		return result;
+	}
+
+	public String validate(String value, int columnIndex) {
+		String validateValue = value;
+	
+		if(isBoolean(value)) {
+			
+			validateValue = setBoolean(value);
+
+		} else if (isNumber(value)) {
+			validateValue = setNumber(value);
+		} else if (isDate(value)) {
+			validateValue = setDate(value);
+		}
+
+		
+		return validateValue;
+	}
+	
+	public void setData(List<String> row) {
+		for (int i = 0; i < row.size() ; i++) {
+			String validateValue = validate(row.get(i),i) ;
+			row.set(i, validateValue);
+		}
+		data.add(row);
+	}
+	
+	
+	public void setData(int columnIndex, int rowIndex,String value) {
+		String validateValue = validate(value,columnIndex) ;
+		
+		//System.out.println("SET DATA --> columnIndex : " + columnIndex + " ; rowIndex : " + rowIndex + " ; value : " +  value);
+		if (data.size() == 0 || rowIndex >= data.size()) {
+			List<String> row = new ArrayList<String>();
+			row.add(validateValue);
+			data.add(row);
+		} else {
+			data.get(rowIndex).set(columnIndex,validateValue);
+		}
+	}
+	
+	public String getData(int rowIndex, int columnIndex) {
+		return data.get(rowIndex).get(columnIndex);
+	}
+	
+	private final String DEFAULT_VALUE = "";
+	
+	public boolean hasColumn(String columnName) {
+		boolean result = false;
+		for (int i= 0; i < headerList.size(); i++) {
+			if (headerList.get(i).equals(columnName)) {
+				result = true;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	public void addColumn(String columnName) {
+		
+		headerList.add(columnName);
+		for (int i= 0; i < data.size(); i++) {
+			data.get(i).add(DEFAULT_VALUE);
+		}
+	}
+}

@@ -1,0 +1,560 @@
+package licoresreyes.model;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+
+public class OdooObject extends LRObject {
+	private static final String TAG = "  OD --> ";
+	private final String DEFAULT_VALUE = "";
+	public XmlObject xmlObject;
+	
+	public OdooObject(XmlObject xmlObject, String filename, OpenBravoObject OB,List<OpenBravoObject> relOB) {
+		this.filename = filename;
+		headerList = new ArrayList<String>();
+		data  = new ArrayList<List<String>>(); 
+		this.xmlObject = xmlObject;
+		init(OB,relOB);
+
+	}
+	
+	public OdooObject(String filename) {
+		this.filename = filename;
+		headerList = new ArrayList<String>();
+		data  = new ArrayList<List<String>>(); 
+	}
+	
+	private void init(OpenBravoObject OB,List<OpenBravoObject> relOB) {
+		List<XmlField> xmlFields = OB.getXmlTable().getFields();
+
+		int columnCount = 0;
+		for (int i = 0; i < xmlFields.size(); i++) {
+			String ODColumn = xmlFields.get(i).getODColumn();
+			addColumn(ODColumn);
+			columnCount++;
+		}
+		
+		System.out.println("\n" + TAG + "init() "  + OB.getXmlTable().getId() + "; rows : " + OB.data.size() ) ;
+		System.out.print(TAG + "Cargando ");
+		int percent = 0;
+		for (int j= 0; j < OB.getRowCount(); j++) {
+			List<String> rowToAdd = new ArrayList<String>();
+			boolean isAdd = true;
+			
+			for (int i = 0; i < xmlFields.size(); i++) {
+				String OBColumn = xmlFields.get(i).getOBColumn();
+				String value = xmlFields.get(i).getDefaultvalue();
+				String filter =  xmlFields.get(i).getFilter();
+				
+
+				if (value.isEmpty()) {
+					int OBColumnIndex = OB.getColumnIndex(OBColumn);
+					if (OBColumnIndex >= 0) {
+						value = OB.getData(j,OBColumnIndex);
+						if (filter.isEmpty()) {	
+							rowToAdd.add(value);
+						} else {
+							 if (filter.equals(value)) {
+								rowToAdd.add(value);
+							 } else {
+								isAdd = false;
+								break; 
+							 }
+						}
+						
+					} else {
+						if (OBColumn.isEmpty()) {
+							rowToAdd.add("");
+						} else {
+							System.out.println(TAG + "No se ha podido encontrar la columna " + OBColumn );
+						}
+					}
+				} else {
+					rowToAdd.add(value);
+				}
+			}
+			
+			
+			if (   (j * 100 /OB.getRowCount() ) > percent  ) {
+				percent = j * 100 / OB.getRowCount();
+				if (percent % 10 == 0)
+					System.out.print( "(" + percent + "%)");
+			}
+			
+			if (isAdd) {
+				if (rowToAdd.size() == columnCount) {
+					this.setData(rowToAdd);
+				} else {
+					System.out.println(TAG + "Vaya que raro, rowToAdd  "  + rowToAdd.size() + "; columnCount : " + columnCount ) ;
+				}
+			}
+		}
+		System.out.println("");
+		System.out.println(TAG + "OK");
+		addData(relOB);
+	}
+	public void addData(List<OpenBravoObject> relOB) {
+		//Recorremos las tablas con referencias a la principal
+		for (int i = 0; i < relOB.size(); i++) {
+			OpenBravoObject OB = relOB.get(i);
+			
+			for (int j = 0; j < OB.getXmlTable().getFields().size(); j++) {
+				String headOD = OB.getXmlTable().getFields().get(j).getODColumn();
+				addColumn(headOD);
+			}
+			
+			
+			String rel = OB.getXmlTable().getRelation();
+			String relOD = OB.getXmlTable().getRelationOD();
+			
+			System.out.println("\n" + TAG + "addData() OB: "  + OB.getXmlTable().getId() + "; rows : " + OB.data.size() ) ;
+			//Recorremos las filas de la tabla a importar
+			System.out.print(TAG + "Cargando ");
+			int percent = 0;
+
+			for (int j = 0; j < data.size(); j++) {
+				//Buscamos el id de la nueva tabla a encontrar
+				int rowOD = j;
+				int columnOD = this.getColumnIndex(relOD);
+
+				if (columnOD >= 0) {
+					String idOD = this.getData(rowOD, columnOD) ;
+					
+					for (int k = 0; k < OB.getXmlTable().getFields().size(); k++ ) {
+						String headOB = OB.getXmlTable().getFields().get(k).getOBColumn();
+						String headOD = OB.getXmlTable().getFields().get(k).getODColumn();
+						String value =  OB.getXmlTable().getFields().get(k).getDefaultvalue();
+						
+						int columnOB = OB.getColumnIndex(rel);
+
+						List<Integer> matches  = OB.find(columnOB,idOD);
+
+						for (int l = 0; l < matches.size() ; l++) {
+						    int match = matches.get(l);
+						 
+						    if (columnOB >= 0 && match >= 0) {
+								columnOD = getColumnIndex(headOD);
+								columnOB  = OB.getColumnIndex(headOB);
+								String fromOB;
+								if (columnOB >= 0) {
+									if (value.isEmpty()) {
+										 fromOB = OB.data.get(match).get(columnOB);
+									} else {
+										 fromOB = value;
+									}
+									this.setData(columnOD, rowOD, fromOB);
+								} else {
+									System.out.println(TAG + "ERROR :  No se puede encontrar la columna : " + headOB);
+								}
+							}
+						}
+					}
+					
+				}
+				if (   (j * 100 / data.size() ) > percent  ) {
+					percent = j * 100 / data.size();
+					if (percent % 10 == 0)
+						System.out.print( "(" + percent + "%)");
+				}
+			}
+		}
+		System.out.println("");
+		System.out.println(TAG + "OK");
+	}	
+
+	public void addPrefix(XmlObject xmlObject) {
+		System.out.println("\n" + TAG + "Añadiendo  prefijos");
+		
+		List<XmlTable> xmlTables = new ArrayList<XmlTable>();
+		xmlTables.add(xmlObject.getMainTable());
+		
+		for (int i = 0; i < xmlObject.getReferenceTableList().size(); i++) {
+			xmlTables.add(xmlObject.getReferenceTableList().get(i));
+		}
+		
+		for (int i = 0; i < xmlTables.size(); i++) {
+			List<XmlField> xmlFields =  xmlTables.get(i).getFields();
+			
+			for (int j = 0; j < xmlFields.size(); j++) {
+				XmlField xmlField = xmlFields.get(j);
+				String ODColumn = xmlField.getODColumn();
+				String prefix = xmlField.getPrefix();
+				
+				if (!prefix.isEmpty()) {
+					int columnIndex = this.getColumnIndex(ODColumn);
+					for (int k= 0; k < data.size(); k++) {
+						String oldData = this.getData(k, columnIndex);
+						if (oldData.length() > 0) {
+							this.setData(columnIndex, k, prefix.replace(".", "") + oldData);
+						}
+					}
+				}
+				
+			}
+		}
+		
+		
+	
+	}
+	public void addColumn(String columnName) {
+		headerList.add(columnName);
+		for (int i= 0; i < data.size(); i++) {
+			data.get(i).add(DEFAULT_VALUE);
+		}
+	}
+	
+	public List<List<String>> ApplyFilterByDate(XmlFilter xmlFilter, int columnIndex, int byIndex) {
+		List<List<String>> dataTemp = new ArrayList<List<String>>(); 
+		
+		Calendar today = Calendar.getInstance();
+		
+		for (int i= 0 ; i < data.size(); i++) {
+			String dateTo = data.get(i).get(columnIndex);
+			String dateFrom = data.get(i).get(byIndex);
+
+			
+			String[] dateToArray = dateTo.split("/");
+			String[] dateFromArray = dateFrom.split("/");
+			
+			if (dateToArray.length  != 3 && dateFromArray.length != 3) {
+				dateToArray = dateTo.split("-");
+				dateFromArray = dateFrom.split("-");
+			}
+			
+			
+		
+			boolean onDate = false;
+			if (dateToArray.length  != 3) {
+				onDate = true;
+			} else if (dateFromArray.length != 3) {
+
+			    
+				int yearDateTo = Integer.parseInt(dateToArray[0]);
+				int monthDateTo = Integer.parseInt(dateToArray[1]);
+				int dayDateTo =  Integer.parseInt(dateToArray[2]);
+				
+				Calendar to = Calendar.getInstance();
+				to.set(Calendar.YEAR, yearDateTo);
+				to.set(Calendar.MONTH, monthDateTo);
+				to.set(Calendar.DAY_OF_MONTH, dayDateTo);
+				
+				onDate = today.before(to);
+
+			} else if (dateToArray.length  == 3 && dateFromArray.length == 3 ) {
+			
+				
+				int yearDateTo = Integer.parseInt(dateToArray[0]);
+				int monthDateTo = Integer.parseInt(dateToArray[1]);
+				int dayDateTo =  Integer.parseInt(dateToArray[2]);
+				
+				Calendar to = Calendar.getInstance();
+				to.set(Calendar.YEAR, yearDateTo);
+				to.set(Calendar.MONTH, monthDateTo -1);
+				to.set(Calendar.DAY_OF_MONTH, dayDateTo);
+			
+			//System.out.println("Aplicando filtro TO :  " + to.get(Calendar.YEAR) + "/" + to.get(Calendar.MONTH) + "/" + to.get(Calendar.DAY_OF_MONTH) );
+				
+				int yearDateFrom = Integer.parseInt(dateFromArray[0]);
+				int monthDateFrom =Integer.parseInt(dateFromArray[1]);
+				int dayDateFrom  =Integer.parseInt(dateFromArray[2]);
+			
+				Calendar from = Calendar.getInstance();
+				from.set(Calendar.YEAR, yearDateFrom);
+				from.set(Calendar.MONTH, monthDateFrom -1);
+				from.set(Calendar.DAY_OF_MONTH, dayDateFrom);
+				
+				//System.out.println("Aplicando filtro FROM :  " + from.get(Calendar.YEAR) + "/" + from.get(Calendar.MONTH) + "/" + from.get(Calendar.DAY_OF_MONTH) );
+				
+				onDate = today.after(from) && today.before(to);
+				
+
+			}
+			System.out.println(TAG + "Aplicando filtro BYDATE --> onDate :  " + onDate );
+			if (onDate) {
+				dataTemp.add(data.get(i));
+			}
+		}
+		
+		return dataTemp;
+	
+	}
+	
+	public void ApplyFilterAccounting(XmlFilter xmlFilter, int columnIndex, int byIndex) {
+
+		for (int i= 0 ; i < data.size(); i++) {
+			String creditValue = data.get(i).get(columnIndex);
+			String debitValue = data.get(i).get(byIndex);
+			
+			float creditNumber = Float.valueOf(creditValue);
+			float debitNumber = Float.valueOf(debitValue);
+			
+			if (creditNumber < 0 || debitNumber < 0) {
+				creditNumber *= -1;
+				debitNumber *= -1;
+				data.get(i).set(columnIndex, String.valueOf(debitNumber));
+				data.get(i).set(byIndex, String.valueOf(creditNumber));
+			}
+		}
+		
+		
+	}
+	public void ApplyFilterByName(XmlFilter xmlFilter, int columnIndex, int byIndex) {
+		
+		//	<FILTER type="BYNAME"  column="name" value="TC" by="valid_from" set1="purchase" set2="sale"  ></FILTER> 
+		String set1 = xmlFilter.getSet1();
+		String set2 = xmlFilter.getSet2();
+		
+		for (int i= 0 ; i < data.size(); i++) {
+			String name = data.get(i).get(columnIndex);
+			if (name.contains(xmlFilter.getValue()) ) {
+				this.setData(byIndex, i, set1);
+			} else {
+				this.setData(byIndex, i, set2);
+			}
+		}
+	
+	}
+	
+	public List<List<String>> ApplyFilterAdvance(XmlFilter xmlFilter, int columnIndex, int byIndex) {
+		List<List<String>> dataTemp = new ArrayList<List<String>>(); 
+		List<String> checked = new ArrayList<String>();
+
+		for (int i= 0 ; i < data.size(); i++) {
+			  String id = data.get(i).get(columnIndex);
+			  if (!checked.contains(id)) {
+			
+				  List<Integer> rowsMatch = this.find(columnIndex, id);
+				
+				  int winner = i;
+				  String winnerValue= data.get(i).get(byIndex);
+				  for (int j = 0; j < rowsMatch.size(); j++) {
+					  String toCompare = data.get(rowsMatch.get(j)).get(byIndex);
+
+				      if (this.isHighDate(toCompare, winnerValue )) {
+				    	  winner = rowsMatch.get(j);
+				    	  winnerValue = toCompare;
+				      }
+				  }
+				  checked.add(id);
+				  dataTemp.add(data.get(winner));
+			  }
+				
+		}
+		return dataTemp;
+	
+	}
+	
+	public void ApplyFilterList(List<String> listToFilter,String columnNameCurrent) {
+		
+		System.out.println("\n" + TAG + "ApplyFilterList : " + listToFilter.size() );
+		List<List<String>> auxList = new ArrayList<List<String>> (this.data);
+		int columnIndex = getColumnIndex(columnNameCurrent);
+		int toRemove = 0;
+		for (int j = auxList.size() -1; j >= 0 ;j--) {
+			   String value = this.data.get(j).get(columnIndex);
+			   
+			   if (!listToFilter.contains(value)) {
+					this.data.remove(j);
+					toRemove++;
+			   } 
+		}
+		
+		if (toRemove > 0) {
+			System.out.println(TAG + "Se han eliminado " + toRemove + " y quedan " + this.data.size() );
+		}
+	}
+	
+	public void ApplyFilter(XmlFilter xmlFilter) {
+
+		System.out.println("\n" + TAG + "Aplicando Filtro : " + xmlFilter.getType() + " ; column : " + xmlFilter.getColumn());
+		int columnIndex = getColumnIndex(xmlFilter.getColumn());
+		int byIndex =  getColumnIndex(xmlFilter.getBy());
+		
+		if (columnIndex == -1) {
+			System.out.println( TAG + "ERROR aplicando filtro, no se puede encontrar la columna  : " + xmlFilter.getColumn());
+			return;
+		}
+		
+		if (xmlFilter.getType() == XmlFilter.Type.BYNAME) {
+			ApplyFilterByName(xmlFilter,columnIndex,byIndex);
+			
+		} else if (xmlFilter.getType() == XmlFilter.Type.ADVANCED) {
+			this.data = ApplyFilterAdvance(xmlFilter,columnIndex,byIndex);
+		} else if (xmlFilter.getType() == XmlFilter.Type.BYDATE) {
+			this.data = ApplyFilterByDate(xmlFilter,columnIndex,byIndex); 
+		} else if (xmlFilter.getType() == XmlFilter.Type.ACCOUNTING) {
+			ApplyFilterAccounting(xmlFilter,columnIndex,byIndex); 
+		} else {
+			int toRemove = 0;
+			List<List<String>> auxList = new ArrayList<List<String>> (this.data);
+
+			for (int j = auxList.size() -1; j >= 0 ;j--) {
+			    String rowValue = this.data.get(j).get(columnIndex);
+			    	
+			    switch(xmlFilter.getType()) {
+				case FILTER:	
+					if (!rowValue.equals(xmlFilter.getValue())) {
+						toRemove++;
+				    	this.data.remove(j);
+					}
+					break;
+				case FILTER_EX:	
+					if (rowValue.equals(xmlFilter.getValue())) {
+						toRemove++;
+				    	this.data.remove(j);
+					}
+					break;
+				case REMOVE:
+					if (rowValue.equals(xmlFilter.getValue())) {
+						this.data.get(j).set(columnIndex, "");
+					}
+					break;
+				case REPLACE:
+					if (rowValue.equals(xmlFilter.getValue())) {
+						//System.out.println("Filter Replace!!  Se va a reemplazar en la columna  " + xmlFilter.getColumn() + " el valor ["  + rowValue + "] por [" + xmlFilter.getBy() + "] ");
+						this.data.get(j).set(columnIndex, xmlFilter.getBy());
+					}
+					break;
+				case EAN:
+					if (!isEanValid(this.data.get(j).get(columnIndex))) {
+						this.data.get(j).set(columnIndex, "");
+					}
+					break;
+				default:
+					break;
+				}
+			  
+	
+
+			}
+			if (toRemove > 0) {
+				System.out.println(TAG + "Se han eliminado " + toRemove + " y quedan " + this.data.size() );
+			}
+		}
+		
+
+	}
+	
+	public boolean isEanValid(String eanCode) {
+		boolean result = false;
+		
+		if (eanCode.length() == 13) {
+			String firstTwelveDigits = eanCode.substring(0, eanCode.length() - 1);
+			String digitControl = eanCode.substring(eanCode.length() - 1, eanCode.length());
+			
+			
+			int validDigitControl = getEanDigitControl(firstTwelveDigits);
+			result = digitControl.equals(String.valueOf(validDigitControl));
+
+		}
+		return result;
+	}
+	
+	private int getEanDigitControl(String firstTwelveDigits)
+	{
+	     char[] charDigits = firstTwelveDigits.toCharArray();
+	     int[] ean13 =
+	     {
+	        1, 3
+	     };
+	     int sum = 0;
+	     for(int i = 0; i < charDigits.length; i++)
+	     {
+	         sum += Character.getNumericValue(charDigits[i]) * ean13[i % 2];
+	     }
+	     int checksum = 10 - sum % 10;
+
+	     if(checksum == 10)
+	         checksum = 0;
+
+	     return checksum;
+	}
+
+	private final String updateColumnName = "updated_";
+	
+	public void onlyUpdated(Calendar updateDateFrom ,Calendar updateDateTo) {
+		System.out.println(TAG + "onlyUpdated() " );
+		
+		List<Integer> updateColumnIndexList = new ArrayList<Integer>();
+		int updateColumnCount = 0;
+		int columnIndex = getColumnIndex(updateColumnName + updateColumnCount);
+		
+		while(columnIndex != -1) {
+			updateColumnIndexList.add(columnIndex);
+			System.out.println(TAG + "Añadido el siguiente indice " + columnIndex);
+			updateColumnCount++;
+			columnIndex = getColumnIndex(updateColumnName + updateColumnCount);
+		}
+		
+		int toRemove = 0;
+		List<List<String>> auxList = new ArrayList<List<String>> (this.data);
+
+		
+		for (int j = auxList.size() -1; j >= 0 ;j--) {
+		    List<Calendar> dateList = new ArrayList<Calendar>();
+		    
+		    for (int i = 0; i < updateColumnIndexList.size(); i++) {
+		    	String dateString = auxList.get(j).get(updateColumnIndexList.get(i)); 
+
+		    	String[] dateArray = dateString.split("-");
+		    	
+		    	if (dateArray.length == 3) {
+		    		Calendar date = Calendar.getInstance();
+		    		date.set(Calendar.YEAR, Integer.parseInt(dateArray[0]));
+		    		date.set(Calendar.MONTH, Integer.parseInt(dateArray[1]) -1);
+		    		date.set(Calendar.DAY_OF_MONTH, Integer.parseInt(dateArray[2]));
+		    		dateList.add(date);
+		    	} else {
+		    		//System.out.println(TAG + "onlyUpdated() vaya, parece que " + dateString + " no es una fecha válida.");
+		    	}
+		    }
+		    
+		    boolean isValidDate = false;
+		    for (int i = 0 ; i < dateList.size() ; i++) {
+		    	boolean isUpdateDateBeforeThat = updateDateFrom.before(dateList.get(i)) && updateDateTo.after(dateList.get(i)) ;
+
+		    	if (isUpdateDateBeforeThat) {
+		    		isValidDate = true;
+		    	}
+		    }
+		    
+		    if (!isValidDate) {
+		    	toRemove++;
+		    	this.data.remove(j);
+		    }
+
+		}
+		System.out.println(TAG + "Se han eliminado" + toRemove + " y quedan " + this.data.size() );
+	}
+
+	public XmlField getXmlFieldByNameColumn(String nameColumn) {
+
+		
+		XmlField result = null;
+		for (int i = 0; i < xmlObject.getMainTable().getFields().size() ; i++) {
+				String ODColumn = xmlObject.getMainTable().getFields().get(i).getODColumn();
+				if (ODColumn.equals(nameColumn)) {
+					result = xmlObject.getMainTable().getFields().get(i);
+					return result;
+				}
+		}
+		
+		if (result == null) {
+
+			for (int j = 0; j < xmlObject.getReferenceTableList().size() ; j++) {
+				for (int i = 0; i < xmlObject.getReferenceTableList().get(j).getFields().size(); i++) {
+					String ODColumn =  xmlObject.getReferenceTableList().get(j).getFields().get(i).getODColumn();
+
+					if (ODColumn.equals(nameColumn)) {
+						result = xmlObject.getReferenceTableList().get(j).getFields().get(i);
+
+						return result;
+					}
+					
+				}
+			}
+		}
+		
+		return result;
+	}
+}

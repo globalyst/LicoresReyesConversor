@@ -1,0 +1,120 @@
+package licoresreyes.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import licoresreyes.model.XmlFilter.Type;
+
+public class XmlObject {
+
+	private String id;
+	private String model;
+	private String company;
+	private String accountFilter;
+	private String aux;
+	private XmlTable mainTable = null;
+	private List<XmlTable> referenceTableList;
+	private List<XmlFilter> filterList;
+	private boolean canCreate = false;
+	
+	public XmlObject(String id, String model,String company,String aux, String accountFilter, boolean canCreate) {
+
+		this.id = id;
+		this.model = model;
+		this.company = company;
+		this.aux = aux;
+		this.accountFilter = accountFilter;
+		this.canCreate = canCreate;
+		referenceTableList = new ArrayList<XmlTable>();
+		filterList = new ArrayList<XmlFilter>();
+	}
+	
+	public void addTable(XmlTable xmlTable) {
+		if (mainTable != null) {
+			referenceTableList.add(xmlTable);
+		} else {
+			 mainTable = xmlTable ;
+		}
+	}
+	
+	public void addFilter(XmlFilter xmlFilter) {
+		filterList.add(xmlFilter);
+	}
+	
+	public void print() {
+		System.out.println("\n########################## XML CONFIG ###############################");
+		System.out.println("  OBJECT id: " + id);
+		mainTable.print();
+		for (int i = 0;i < referenceTableList.size(); i++) {
+			referenceTableList.get(i).print();
+		}
+		System.out.println("######################################################################\n");
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public int getTableCount() {
+		int result = 0;
+		if (mainTable != null) {
+			result = 1 + referenceTableList.size();
+		}
+		return result;
+	}
+	
+	public XmlTable getMainTable() {
+		return mainTable;
+	}
+
+	public List<XmlTable> getReferenceTableList() {
+		return referenceTableList;
+	}
+
+	public List<XmlFilter> getFilterList() {
+		return filterList;
+	}
+
+	public String getModel() {
+		return model;
+	}
+
+	public String getCompany() {
+		return company;
+	}
+
+	public void setCompany(String company) {
+		this.company = company;
+	}
+
+	public void setFilterList(List<XmlFilter> filterList) {
+		this.filterList = filterList;
+	}
+
+	public String getAccountFilter() {
+		return accountFilter;
+	}
+
+	public void setAccountFilter(String accountFilter) {
+		this.accountFilter = accountFilter;
+	}
+
+	public String getAux() {
+		return aux;
+	}
+
+	public void setAux(String aux) {
+		this.aux = aux;
+	}
+
+	public boolean isCanCreate() {
+		return canCreate;
+	}
+
+	public void setCanCreate(boolean canCreate) {
+		this.canCreate = canCreate;
+	}
+
+	
+	
+}

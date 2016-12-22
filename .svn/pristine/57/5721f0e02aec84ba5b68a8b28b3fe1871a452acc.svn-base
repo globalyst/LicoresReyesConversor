@@ -1,0 +1,43 @@
+
+	<OBJECT id="res.partner" main="C_BPARTNER"> 
+		<TABLE id="C_BPARTNER"> 
+			<FIELD> 
+				<OB>C_BPARTNER_ID</OB>
+				<OD>id</OD>
+			</FIELD>
+			<FIELD> 
+				<OB>ISACTIVE</OB>
+				<OD>active</OD>
+			</FIELD>
+			<FIELD> 
+				<OB>NAME</OB>
+				<OD>name</OD>
+			</FIELD>
+			<FIELD> 
+				<OB>ISCUSTOMER</OB>
+				<OD>customer</OD>
+			</FIELD>
+			<FIELD> 
+				<OB>ISEMPLOYEE</OB>
+				<OD>employee</OD>
+			</FIELD>
+			<FIELD> 
+				<OB>ISVENDOR</OB>
+				<OD>supplier</OD>
+			</FIELD>
+			<FIELD> 
+				<OB>EM_AVLR_MAIL</OB>
+				<OD>email</OD>
+			</FIELD>
+		</TABLE> 
+		<TABLE id="C_BPARTNER_LOCATION" rel="C_BPARTNER_ID"> 
+			<FIELD> 
+				<OB>NAME</OB>
+				<OD>street</OD>
+			</FIELD>
+			<FIELD> 
+				<OB>PHONE</OB>
+				<OD>phone</OD>
+			</FIELD>
+		</TABLE> 
+	</OBJECT>
